@@ -91,6 +91,23 @@ function formatDate(value: Date | string | null) {
   }).format(parsedValue);
 }
 
+function formatDateTime(value: Date | string | null) {
+  const parsedValue = parseSqlDate(value);
+
+  if (!parsedValue) {
+    return "N/A";
+  }
+
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(parsedValue);
+}
+
 function safeNumber(value: unknown) {
   if (typeof value === "number" && Number.isFinite(value)) {
     return value;
@@ -413,7 +430,7 @@ export async function getDashboardOverviewData(filters?: OverviewFilterOptions):
       totalTweets: safeNumber(countRow.totalTweets),
       totalTweetsLabel: formatCompact(safeNumber(countRow.totalTweets)),
       dateRangeLabel: `${formatDate(countRow.minCreated)} - ${formatDate(countRow.maxCreated)}`,
-      lastScrapeLabel: formatDate(countRow.lastScrape),
+      lastScrapeLabel: formatDateTime(countRow.lastScrape),
       surgingTrends,
       sentimentData,
       ratioData,
