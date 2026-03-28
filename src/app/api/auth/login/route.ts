@@ -1,5 +1,4 @@
 import bcrypt from "bcryptjs";
-import sql from "mssql";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { signSessionToken } from "@/lib/auth-token";
@@ -26,7 +25,7 @@ export async function POST(request: Request) {
     const pool = await getSqlPool();
     const result = await pool
       .request()
-      .input("username", sql.NVarChar(100), payload.username)
+      .input("username", payload.username)
       .query<AdminUserRecord>(`
         SELECT TOP 1 id, username, password_hash, full_name, role
         FROM dbo.AdminLogin
@@ -67,10 +66,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, message: "Enter valid credentials." }, { status: 400 });
     }
 
+    const errorMessage = error instanceof Error ? error.message : "Unknown login error";
+    console.error("Login route error:", error);
+
     return NextResponse.json(
       {
         success: false,
-        message: "Login failed due to server configuration. Please verify DB settings.",
+        message:
+          process.env.NODE_ENV === "development"
+            ? `Login failed: ${errorMessage}`
+            : "Login failed due to server configuration. Please verify DB settings.",
       },
       { status: 500 },
     );

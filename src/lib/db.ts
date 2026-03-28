@@ -38,7 +38,10 @@ function getDbConfig(): sql.config {
 export async function getSqlPool() {
   if (!global.__veriTracePoolPromise) {
     const pool = new sql.ConnectionPool(getDbConfig());
-    global.__veriTracePoolPromise = pool.connect();
+    global.__veriTracePoolPromise = pool.connect().catch((error) => {
+      global.__veriTracePoolPromise = undefined;
+      throw error;
+    });
   }
 
   return global.__veriTracePoolPromise;
