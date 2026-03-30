@@ -1,5 +1,6 @@
 import { getSqlPool } from "@/lib/db";
 import { ClusterPoint, HeatMapPoint, OverviewData, RatioPoint, SentimentPoint, TopTrend } from "@/lib/dashboard-types";
+import { getOrSetServerCache, makeServerCacheKey } from "@/lib/server-cache";
 
 type CountRow = {
   totalTweets: number;
@@ -26,6 +27,11 @@ type ClusterRow = {
 type LocationRow = {
   location: string;
   tweetCount: number;
+};
+
+type SentimentCountRow = {
+  sentiment: string | null;
+  totalCount: number;
 };
 
 type OverviewFilterOptions = {
@@ -139,8 +145,8 @@ function fallbackOverviewData(message: string): OverviewData {
     lastScrapeLabel: "N/A",
     surgingTrends: ["No trend data", "No trend data"],
     sentimentData: [
-      { name: "Verified", value: 0, color: "#8fce00" },
-      { name: "Misinformation", value: 0, color: "#f59e0b" },
+      { name: "Positive", value: 0, color: "#8fce00" },
+      { name: "Negative", value: 0, color: "#f59e0b" },
       { name: "Neutral", value: 0, color: "#2f7f76" },
     ],
     ratioData: [],
@@ -167,20 +173,53 @@ function toHeatLevel(tweetCount: number, maxCount: number): "low" | "medium" | "
   return "low";
 }
 
+function normalizeSentiment(value: string | null) {
+  if (!value) {
+    return "";
+  }
+
+  return value.trim().toLowerCase();
+}
+
 export async function getDashboardOverviewData(filters?: OverviewFilterOptions): Promise<OverviewData> {
-  try {
-    const pool = await getSqlPool();
-    const startDate = normalizeDateInput(filters?.startDate);
-    const endDate = normalizeDateInput(filters?.endDate);
+  const cacheKey = makeServerCacheKey("dashboard-overview", {
+    startDate: filters?.startDate ?? "",
+    endDate: filters?.endDate ?? "",
+  });
 
-    const startDateBoundary = startDate ?? null;
-    const endDateBoundary = endDate ?? null;
+  return getOrSetServerCache(cacheKey, 30_000, async () => {
+    try {
+      const pool = await getSqlPool();
+      const startDate = normalizeDateInput(filters?.startDate);
+      const endDate = normalizeDateInput(filters?.endDate);
 
-    const countResult = await pool
-      .request()
-      .input("startDate", startDateBoundary)
-      .input("endDate", endDateBoundary)
-      .query<CountRow>(`
+      const startDateBoundary = startDate ?? null;
+      const endDateBoundary = endDate ?? null;
+
+      const trendIdColumnResult = await pool.request().query<{ columnName: string }>(`
+      SELECT TOP (1)
+        COLUMN_NAME AS columnName
+      FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = 'dbo'
+        AND TABLE_NAME = 'TwitterTrendTweets_All'
+        AND COLUMN_NAME IN ('TrendID', 'TrendId', 'trend_id', 'trendid')
+      ORDER BY CASE COLUMN_NAME
+        WHEN 'TrendID' THEN 1
+        WHEN 'TrendId' THEN 2
+        WHEN 'trend_id' THEN 3
+        WHEN 'trendid' THEN 4
+        ELSE 99
+      END
+    `);
+
+      const trendIdColumn = trendIdColumnResult.recordset[0]?.columnName ?? null;
+      const trendIdExpression = trendIdColumn ? `TRY_CAST([${trendIdColumn}] AS bigint)` : "NULL";
+
+      const countRequest = pool
+        .request()
+        .input("startDate", startDateBoundary)
+        .input("endDate", endDateBoundary)
+        .query<CountRow>(`
       WITH parsed AS (
         SELECT
           COALESCE(
@@ -227,11 +266,11 @@ export async function getDashboardOverviewData(filters?: OverviewFilterOptions):
         AND (@endDate IS NULL OR CAST(parsedFilterDate AS date) <= TRY_CAST(@endDate AS date))
     `);
 
-    const trendCountsResult = await pool
-      .request()
-      .input("startDate", startDateBoundary)
-      .input("endDate", endDateBoundary)
-      .query<TrendCountRow>(`
+      const trendCountsRequest = pool
+        .request()
+        .input("startDate", startDateBoundary)
+        .input("endDate", endDateBoundary)
+        .query<TrendCountRow>(`
       WITH parsed AS (
         SELECT
           TrendName,
@@ -272,14 +311,93 @@ export async function getDashboardOverviewData(filters?: OverviewFilterOptions):
       ORDER BY COUNT_BIG(1) DESC
     `);
 
-    const surgingResult = await pool
-      .request()
-      .input("startDate", startDateBoundary)
-      .input("endDate", endDateBoundary)
-      .query<SurgingRow>(`
+      const surgingRequest = pool
+        .request()
+        .input("startDate", startDateBoundary)
+        .input("endDate", endDateBoundary)
+        .query<SurgingRow>(`
       WITH parsed AS (
         SELECT
           TrendName,
+          ${trendIdExpression} AS trendId,
+          COALESCE(
+            TRY_CONVERT(datetime2, CreatedAt, 126),
+            TRY_CONVERT(datetime2, CreatedAt, 120),
+            TRY_CONVERT(datetime2, CreatedAt, 103),
+            TRY_CONVERT(datetime2, CreatedAt, 105),
+            TRY_CONVERT(datetime2, CreatedAt, 101),
+            TRY_CONVERT(datetime2, CreatedAt, 112),
+            TRY_CAST(CreatedAt AS datetime2),
+            TRY_CONVERT(datetime2, TweetCollectedAt, 126),
+            TRY_CONVERT(datetime2, TweetCollectedAt, 120),
+            TRY_CONVERT(datetime2, TweetCollectedAt, 103),
+            TRY_CONVERT(datetime2, TweetCollectedAt, 105),
+            TRY_CONVERT(datetime2, TweetCollectedAt, 101),
+            TRY_CONVERT(datetime2, TweetCollectedAt, 112),
+            TRY_CAST(TweetCollectedAt AS datetime2)
+          ) AS parsedFilterDate
+        FROM dbo.TwitterTrendTweets_All
+      ),
+      filtered AS (
+        SELECT
+          TrendName,
+          trendId,
+          CAST(parsedFilterDate AS date) AS trendDate
+        FROM parsed
+        WHERE parsedFilterDate IS NOT NULL
+          ${trendIdColumn ? "AND trendId IS NOT NULL" : ""}
+          AND (@startDate IS NULL OR CAST(parsedFilterDate AS date) >= TRY_CAST(@startDate AS date))
+          AND (@endDate IS NULL OR CAST(parsedFilterDate AS date) <= TRY_CAST(@endDate AS date))
+      ),
+      latest AS (
+        SELECT MAX(trendDate) AS latestDate
+        FROM filtered
+      )
+      SELECT TOP (2)
+        f.TrendName AS trendName,
+        COUNT_BIG(1) AS tweetCount
+      FROM filtered f
+      CROSS JOIN latest l
+      WHERE f.trendDate = l.latestDate
+      GROUP BY f.TrendName
+      ORDER BY ${trendIdColumn ? "MIN(f.trendId) ASC," : ""} COUNT_BIG(1) DESC
+    `);
+
+      const clusterRequest = pool
+        .request()
+        .input("startDate", startDateBoundary)
+        .input("endDate", endDateBoundary)
+        .query<ClusterRow>(`
+      WITH parsed AS (
+        SELECT
+          COALESCE(NULLIF(cluster_name, ''), 'Unlabeled') AS clusterName,
+          COALESCE(
+            TRY_CONVERT(datetime2, created_date, 126),
+            TRY_CONVERT(datetime2, created_date, 120),
+            TRY_CONVERT(datetime2, created_date, 103),
+            TRY_CONVERT(datetime2, created_date, 105),
+            TRY_CAST(created_date AS datetime2)
+          ) AS parsedCreatedDate
+        FROM dbo.tweet_clustering_results
+      )
+      SELECT TOP (8)
+        clusterName,
+        COUNT_BIG(1) AS tweetCount
+      FROM parsed
+      WHERE (@startDate IS NULL OR CAST(parsedCreatedDate AS date) >= TRY_CAST(@startDate AS date))
+        AND (@endDate IS NULL OR CAST(parsedCreatedDate AS date) <= TRY_CAST(@endDate AS date))
+      GROUP BY clusterName
+      ORDER BY COUNT_BIG(1) DESC
+    `);
+
+      const locationRequest = pool
+        .request()
+        .input("startDate", startDateBoundary)
+        .input("endDate", endDateBoundary)
+        .query<LocationRow>(`
+      WITH parsed AS (
+        SELECT
+          LTRIM(RTRIM(UserLocation)) AS location,
           COALESCE(
             TRY_CONVERT(datetime2, CreatedAt, 126),
             TRY_CONVERT(datetime2, CreatedAt, 120),
@@ -307,73 +425,61 @@ export async function getDashboardOverviewData(filters?: OverviewFilterOptions):
           ) AS parsedFilterDate
         FROM dbo.TwitterTrendTweets_All
       )
-      SELECT TOP (2)
-        TrendName AS trendName,
-        COUNT_BIG(1) AS tweetCount
-      FROM parsed
-      WHERE (@startDate IS NULL OR CAST(parsedFilterDate AS date) >= TRY_CAST(@startDate AS date))
-        AND (@endDate IS NULL OR CAST(parsedFilterDate AS date) <= TRY_CAST(@endDate AS date))
-      GROUP BY TrendName
-      ORDER BY COUNT_BIG(1) DESC
-    `);
-
-    const clusterResult = await pool
-      .request()
-      .input("startDate", startDateBoundary)
-      .input("endDate", endDateBoundary)
-      .query<ClusterRow>(`
-      WITH parsed AS (
-        SELECT
-          COALESCE(NULLIF(cluster_name, ''), 'Unlabeled') AS clusterName,
-          COALESCE(
-            TRY_CONVERT(datetime2, created_date, 126),
-            TRY_CONVERT(datetime2, created_date, 120),
-            TRY_CONVERT(datetime2, created_date, 103),
-            TRY_CONVERT(datetime2, created_date, 105),
-            TRY_CAST(created_date AS datetime2)
-          ) AS parsedCreatedDate
-        FROM dbo.tweet_clustering_results
-      )
-      SELECT TOP (8)
-        clusterName,
-        COUNT_BIG(1) AS tweetCount
-      FROM parsed
-      WHERE (@startDate IS NULL OR CAST(parsedCreatedDate AS date) >= TRY_CAST(@startDate AS date))
-        AND (@endDate IS NULL OR CAST(parsedCreatedDate AS date) <= TRY_CAST(@endDate AS date))
-      GROUP BY clusterName
-      ORDER BY COUNT_BIG(1) DESC
-    `);
-
-    const locationResult = await pool
-      .request()
-      .input("startDate", startDateBoundary)
-      .input("endDate", endDateBoundary)
-      .query<LocationRow>(`
-      WITH parsed AS (
-        SELECT
-          LTRIM(RTRIM(UserLocation)) AS location,
-          COALESCE(
-            TRY_CONVERT(datetime2, CreatedAt, 126),
-            TRY_CONVERT(datetime2, CreatedAt, 120),
-            TRY_CONVERT(datetime2, CreatedAt, 103),
-            TRY_CONVERT(datetime2, CreatedAt, 105),
-            TRY_CONVERT(datetime2, CreatedAt, 101),
-            TRY_CONVERT(datetime2, CreatedAt, 112),
-            TRY_CAST(CreatedAt AS datetime2)
-          ) AS parsedCreatedAt
-        FROM dbo.TwitterTrendTweets_All
-      )
       SELECT TOP (8)
         location,
         COUNT_BIG(1) AS tweetCount
       FROM parsed
       WHERE location IS NOT NULL
         AND location <> ''
-        AND (@startDate IS NULL OR CAST(parsedCreatedAt AS date) >= TRY_CAST(@startDate AS date))
-        AND (@endDate IS NULL OR CAST(parsedCreatedAt AS date) <= TRY_CAST(@endDate AS date))
+        AND (@startDate IS NULL OR CAST(parsedFilterDate AS date) >= TRY_CAST(@startDate AS date))
+        AND (@endDate IS NULL OR CAST(parsedFilterDate AS date) <= TRY_CAST(@endDate AS date))
       GROUP BY location
       ORDER BY COUNT_BIG(1) DESC
     `);
+
+      const sentimentRequest = pool
+        .request()
+        .input("startDate", startDateBoundary)
+        .input("endDate", endDateBoundary)
+        .query<SentimentCountRow>(`
+      WITH parsed AS (
+        SELECT
+          sentiment,
+          COALESCE(
+            TRY_CONVERT(datetime2, created_date, 126),
+            TRY_CONVERT(datetime2, created_date, 120),
+            TRY_CONVERT(datetime2, created_date, 103),
+            TRY_CONVERT(datetime2, created_date, 105),
+            TRY_CONVERT(datetime2, created_date, 101),
+            TRY_CONVERT(datetime2, created_date, 112),
+            TRY_CAST(created_date AS datetime2)
+          ) AS parsedCreatedDate
+        FROM dbo.sentiment_analysis_results
+      )
+      SELECT
+        sentiment,
+        COUNT_BIG(1) AS totalCount
+      FROM parsed
+      WHERE (@startDate IS NULL OR CAST(parsedCreatedDate AS date) >= TRY_CAST(@startDate AS date))
+        AND (@endDate IS NULL OR CAST(parsedCreatedDate AS date) <= TRY_CAST(@endDate AS date))
+      GROUP BY sentiment
+    `);
+
+      const [
+        countResult,
+        trendCountsResult,
+        surgingResult,
+        clusterResult,
+        locationResult,
+        sentimentResult,
+      ] = await Promise.all([
+        countRequest,
+        trendCountsRequest,
+        surgingRequest,
+        clusterRequest,
+        locationRequest,
+        sentimentRequest,
+      ]);
 
     const countRow = countResult.recordset[0] ?? {
       totalTweets: 0,
@@ -394,13 +500,47 @@ export async function getDashboardOverviewData(filters?: OverviewFilterOptions):
       surgingTrends.push("No trend data");
     }
 
+    const sentimentCounts = sentimentResult.recordset.reduce(
+      (acc, row) => {
+        const key = normalizeSentiment(row.sentiment);
+        const count = safeNumber(row.totalCount);
+
+        if (key === "positive" || key === "verified") {
+          acc.positive += count;
+        } else if (key === "negative" || key === "misinformation" || key === "misinfo") {
+          acc.negative += count;
+        } else if (key === "neutral") {
+          acc.neutral += count;
+        } else {
+          acc.neutral += count;
+        }
+
+        return acc;
+      },
+      { positive: 0, negative: 0, neutral: 0 },
+    );
+
     const sentimentData: SentimentPoint[] = [
-      { name: "Verified", value: 0, color: "#8fce00" },
-      { name: "Misinformation", value: 0, color: "#f59e0b" },
-      { name: "Neutral", value: 0, color: "#2f7f76" },
+      { name: "Positive", value: sentimentCounts.positive, color: "#8fce00" },
+      { name: "Negative", value: sentimentCounts.negative, color: "#f59e0b" },
+      { name: "Neutral", value: sentimentCounts.neutral, color: "#2f7f76" },
     ];
 
-    const ratioData: RatioPoint[] = [];
+    const directionalSentimentTotal = sentimentCounts.positive + sentimentCounts.negative;
+    const accuracyScore = directionalSentimentTotal
+      ? Math.round((sentimentCounts.positive / directionalSentimentTotal) * 100)
+      : 0;
+
+    const ratioData: RatioPoint[] =
+      sentimentCounts.positive > 0 || sentimentCounts.negative > 0
+        ? [
+            {
+              trend: "Overall",
+              positive: sentimentCounts.positive,
+              negative: sentimentCounts.negative,
+            },
+          ]
+        : [];
 
     const clusterData: ClusterPoint[] = clusterResult.recordset.map((row, index) => {
       const angle = (index / Math.max(1, clusterResult.recordset.length)) * Math.PI * 2;
@@ -426,22 +566,23 @@ export async function getDashboardOverviewData(filters?: OverviewFilterOptions):
       };
     });
 
-    return {
-      totalTweets: safeNumber(countRow.totalTweets),
-      totalTweetsLabel: formatCompact(safeNumber(countRow.totalTweets)),
-      dateRangeLabel: `${formatDate(countRow.minCreated)} - ${formatDate(countRow.maxCreated)}`,
-      lastScrapeLabel: formatDateTime(countRow.lastScrape),
-      surgingTrends,
-      sentimentData,
-      ratioData,
-      clusterData,
-      heatMapData,
-      topTrends,
-      accuracyScore: 0,
-      dataWarning: null,
-    };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown SQL dashboard error";
-    return fallbackOverviewData(`Dashboard data fallback enabled: ${message}`);
-  }
+      return {
+        totalTweets: safeNumber(countRow.totalTweets),
+        totalTweetsLabel: formatCompact(safeNumber(countRow.totalTweets)),
+        dateRangeLabel: `${formatDate(countRow.minCreated)} - ${formatDate(countRow.maxCreated)}`,
+        lastScrapeLabel: formatDateTime(countRow.lastScrape),
+        surgingTrends,
+        sentimentData,
+        ratioData,
+        clusterData,
+        heatMapData,
+        topTrends,
+        accuracyScore,
+        dataWarning: null,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown SQL dashboard error";
+      return fallbackOverviewData(`Dashboard data fallback enabled: ${message}`);
+    }
+  });
 }

@@ -53,8 +53,8 @@ export function SentimentDonutChart({ data }: SentimentDonutChartProps) {
   const sentimentData = data.length
     ? data
     : [
-        { name: "Verified", value: 0, color: "#8fce00" },
-        { name: "Misinformation", value: 0, color: "#f59e0b" },
+        { name: "Positive", value: 0, color: "#8fce00" },
+        { name: "Negative", value: 0, color: "#f59e0b" },
         { name: "Neutral", value: 0, color: "#2f7f76" },
       ];
 
@@ -77,7 +77,7 @@ export function SentimentDonutChart({ data }: SentimentDonutChartProps) {
               ))}
             </Pie>
             <Tooltip
-              formatter={(value, name) => [`${String(value)} K`, String(name)]}
+              formatter={(value, name) => [Number(value).toLocaleString(), String(name)]}
               contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
             />
           </PieChart>
@@ -91,7 +91,7 @@ export function SentimentDonutChart({ data }: SentimentDonutChartProps) {
 
 export function MisinformationRatioChart({ data }: MisinformationRatioChartProps) {
   const chartReady = useChartReady();
-  const misinformationRatio = data.length ? data : [{ trend: "N/A", verified: 0, misinfo: 0 }];
+  const misinformationRatio = data.length ? data : [{ trend: "N/A", positive: 0, negative: 0 }];
 
   return (
     <div className="h-48 w-full min-w-0 overflow-hidden">
@@ -104,8 +104,8 @@ export function MisinformationRatioChart({ data }: MisinformationRatioChartProps
               cursor={{ fill: "rgba(148, 163, 184, 0.08)" }}
               contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
             />
-            <Bar dataKey="verified" stackId="a" fill="#9acb3f" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="misinfo" stackId="a" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="positive" stackId="a" fill="#9acb3f" radius={[4, 4, 0, 0]} />
+            <Bar dataKey="negative" stackId="a" fill="#f59e0b" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       ) : (

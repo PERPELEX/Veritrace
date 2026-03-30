@@ -10,8 +10,8 @@ export type SessionTokenPayload = JWTPayload & {
 function getJwtSecret() {
   const secret = process.env.JWT_SECRET;
 
-  if (!secret) {
-    throw new Error("Missing required environment variable: JWT_SECRET");
+  if (!secret || secret.trim().length === 0) {
+    throw new Error("Missing or empty JWT_SECRET environment variable. Please set JWT_SECRET in your .env.local file.");
   }
 
   return new TextEncoder().encode(secret);

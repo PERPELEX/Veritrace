@@ -4,6 +4,11 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
+  Line,
+  LineChart,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -14,6 +19,7 @@ import {
   GlobeAltIcon,
   MagnifyingGlassIcon,
   ComputerDesktopIcon,
+  ChartPieIcon,
   Squares2X2Icon,
   ClockIcon,
   Cog6ToothIcon,
@@ -39,6 +45,8 @@ function formatCompact(n: number) {
   return String(n);
 }
 
+const clusterPalette = ["#2f7f76", "#9acb3f", "#f59e0b", "#38bdf8", "#6366f1", "#ef4444", "#14b8a6"];
+
 export function DashboardClusterClient({ fullName, clusterData }: Props) {
   const router = useRouter();
   const [chartsReady, setChartsReady] = useState(false);
@@ -46,6 +54,34 @@ export function DashboardClusterClient({ fullName, clusterData }: Props) {
   const [endDate, setEndDate] = useState(clusterData.selectedEndDate);
   const [trendName, setTrendName] = useState(clusterData.selectedTrendName);
   const [filterError, setFilterError] = useState("");
+
+  const clusterShareData = useMemo(() => {
+    const total = clusterData.clusters.reduce((sum, item) => sum + item.tweets, 0);
+    return clusterData.clusters.map((item) => ({
+      ...item,
+      sharePct: total > 0 ? Math.round((item.tweets / total) * 100) : 0,
+    }));
+  }, [clusterData.clusters]);
+
+  const clusterParetoData = useMemo(() => {
+    const sorted = [...clusterData.clusters].sort((a, b) => b.tweets - a.tweets);
+    const leader = sorted[0]?.tweets ?? 0;
+    let previous = 0;
+
+    return sorted.map((item, index) => {
+      const gapFromPrevious = index === 0 ? 0 : Math.max(0, previous - item.tweets);
+      const shareOfLeader = leader > 0 ? Math.round((item.tweets / leader) * 100) : 0;
+      previous = item.tweets;
+
+      return {
+        rankLabel: `#${index + 1}`,
+        clusterName: item.name,
+        tweetCount: item.tweets,
+        gapFromPrevious,
+        shareOfLeader,
+      };
+    });
+  }, [clusterData.clusters]);
 
   const hasDateFilterChanges = useMemo(
     () =>
@@ -130,8 +166,8 @@ export function DashboardClusterClient({ fullName, clusterData }: Props) {
   }, []);
 
   return (
-    <main className="min-h-screen bg-[#232427] p-2 sm:p-3">
-      <section className="mx-auto flex min-h-[calc(100vh-12px)] max-w-[1400px] flex-col overflow-hidden rounded-2xl bg-[#f1f2f4] lg:flex-row">
+    <main className="min-h-dvh bg-[#232427] p-0 sm:p-2">
+      <section className="mx-auto flex min-h-dvh w-full max-w-none flex-col overflow-hidden rounded-none bg-[#f1f2f4] lg:flex-row sm:min-h-[calc(100dvh-16px)] sm:rounded-2xl">
         <aside className="hidden w-[260px] shrink-0 bg-gradient-to-b from-[#00130f] via-[#003526] to-[#00120f] px-6 py-8 text-white lg:flex lg:flex-col">
           <SiteLogo className="h-20 w-auto" width={300} height={100} />
           <p className="mt-10 text-sm uppercase tracking-[0.22em] text-emerald-100/70">Menu</p>
@@ -157,6 +193,10 @@ export function DashboardClusterClient({ fullName, clusterData }: Props) {
               <MagnifyingGlassIcon className="h-5 w-5" />
               Search
             </Link>
+            <Link href="/dashboard/sentiment" className="flex items-center gap-3 rounded-lg px-3 py-2 text-emerald-50/90 transition hover:bg-white/8">
+              <ChartPieIcon className="h-5 w-5" />
+              Sentiment
+            </Link>
           </nav>
 
           <div className="my-8 border-t border-emerald-100/20" />
@@ -180,6 +220,33 @@ export function DashboardClusterClient({ fullName, clusterData }: Props) {
         </aside>
 
         <section className="w-full p-3 sm:p-4 lg:p-6">
+          <nav className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-2 text-sm lg:hidden">
+            <Link href="/dashboard" className="rounded-lg border border-slate-200 px-3 py-2 text-slate-700 transition hover:bg-slate-50">
+              Overview
+            </Link>
+            <Link href="/dashboard/trend" className="rounded-lg border border-slate-200 px-3 py-2 text-slate-700 transition hover:bg-slate-50">
+              Trends
+            </Link>
+            <Link href="/dashboard/powerbi" className="rounded-lg border border-slate-200 px-3 py-2 text-slate-700 transition hover:bg-slate-50">
+              Power BI
+            </Link>
+            <Link href="/dashboard/cluster" className="rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-slate-800">
+              Clusters
+            </Link>
+            <Link href="/dashboard/search" className="rounded-lg border border-slate-200 px-3 py-2 text-slate-700 transition hover:bg-slate-50">
+              Search
+            </Link>
+            <Link href="/dashboard/sentiment" className="rounded-lg border border-slate-200 px-3 py-2 text-slate-700 transition hover:bg-slate-50">
+              Sentiment
+            </Link>
+            <Link href="/dashboard/about" className="rounded-lg border border-slate-200 px-3 py-2 text-slate-700 transition hover:bg-slate-50">
+              About
+            </Link>
+            <Link href="/dashboard/settings" className="rounded-lg border border-slate-200 px-3 py-2 text-slate-700 transition hover:bg-slate-50">
+              Settings
+            </Link>
+          </nav>
+
           {clusterData.warning ? (
             <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
               {clusterData.warning}
@@ -294,7 +361,72 @@ export function DashboardClusterClient({ fullName, clusterData }: Props) {
             </article>
 
             <article className="rounded-2xl border border-slate-200 bg-white p-5 xl:col-span-4">
+              <p className="text-xl font-semibold text-slate-800">Cluster Share Mix</p>
+              <p className="text-xs text-slate-500">Relative contribution of each cluster within the filtered window.</p>
+              <div className="mt-3 h-64 w-full min-w-0 overflow-hidden">
+                {chartsReady ? (
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={220}>
+                    <PieChart>
+                      <Pie data={clusterShareData} dataKey="tweets" nameKey="name" innerRadius={42} outerRadius={84} stroke="none" paddingAngle={2}>
+                        {clusterShareData.map((item, index) => (
+                          <Cell key={item.name} fill={clusterPalette[index % clusterPalette.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip
+                        formatter={(value, _name, item) => {
+                          const payload = item.payload as { sharePct: number };
+                          return [`${formatCompact(Number(value))} tweets (${payload.sharePct}%)`, "Share"];
+                        }}
+                        contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
+                      />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-full w-full rounded-xl bg-slate-100" />
+                )}
+              </div>
+            </article>
+
+            <article className="rounded-2xl border border-slate-200 bg-white p-5 xl:col-span-8">
+              <p className="text-xl font-semibold text-slate-800">Cluster Drop-off Curve</p>
+              <p className="text-xs text-slate-500">Shows where volume drops sharply between ranked clusters.</p>
+              <div className="mt-3 h-64 w-full min-w-0 overflow-hidden sm:h-80">
+                {chartsReady ? (
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={240}>
+                    <LineChart data={clusterParetoData}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                      <XAxis dataKey="rankLabel" tick={{ fontSize: 12, fill: "#334155" }} axisLine={false} tickLine={false} />
+                      <YAxis yAxisId="left" tick={{ fontSize: 12, fill: "#334155" }} axisLine={false} tickLine={false} />
+                      <YAxis yAxisId="right" orientation="right" domain={[0, 100]} tickFormatter={(value) => `${value}%`} tick={{ fontSize: 12, fill: "#334155" }} axisLine={false} tickLine={false} />
+                      <Tooltip
+                        formatter={(value, name) => {
+                          if (name === "shareOfLeader") {
+                            return [`${value}%`, "Share of leader"];
+                          }
+                          if (name === "gapFromPrevious") {
+                            return [`${formatCompact(Number(value))} tweets`, "Gap from previous"];
+                          }
+                          return [`${formatCompact(Number(value))} tweets`, "Tweets"];
+                        }}
+                        labelFormatter={(label, payload) => {
+                          const point = payload?.[0]?.payload as { clusterName?: string } | undefined;
+                          return point?.clusterName ? `${label} ${point.clusterName}` : String(label);
+                        }}
+                        contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
+                      />
+                      <Line yAxisId="left" type="monotone" dataKey="gapFromPrevious" stroke="#2f7f76" strokeWidth={2.5} dot={{ r: 3 }} />
+                      <Line yAxisId="right" type="monotone" dataKey="shareOfLeader" stroke="#f59e0b" strokeWidth={2.5} dot={{ r: 3 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-full w-full rounded-xl bg-slate-100" />
+                )}
+              </div>
+            </article>
+
+            <article className="rounded-2xl border border-slate-200 bg-white p-5 xl:col-span-4">
               <p className="text-xl font-semibold text-slate-800">Cluster Breakdown</p>
+              <p className="text-xs text-slate-500">Detailed cluster list with absolute tweet counts.</p>
               <div className="mt-3 max-h-[390px] space-y-2 overflow-y-auto pr-1">
                 {clusterData.clusters.map((cluster) => (
                   <div key={cluster.name} className="rounded-lg border border-slate-200 px-3 py-2">

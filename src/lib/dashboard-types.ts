@@ -1,13 +1,13 @@
 export type SentimentPoint = {
-  name: "Verified" | "Misinformation" | "Neutral";
+  name: "Positive" | "Negative" | "Neutral";
   value: number;
   color: string;
 };
 
 export type RatioPoint = {
   trend: string;
-  verified: number;
-  misinfo: number;
+  positive: number;
+  negative: number;
 };
 
 export type ClusterPoint = {

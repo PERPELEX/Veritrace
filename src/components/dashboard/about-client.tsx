@@ -5,6 +5,7 @@ import {
   GlobeAltIcon,
   MagnifyingGlassIcon,
   ComputerDesktopIcon,
+  ChartPieIcon,
   ClockIcon,
   Cog6ToothIcon,
   ArrowLeftIcon,
@@ -18,8 +19,8 @@ type Props = {
 
 export function DashboardAboutClient({ fullName }: Props) {
   return (
-    <main className="min-h-screen bg-[#232427] p-2 sm:p-3">
-      <section className="mx-auto flex min-h-[calc(100vh-12px)] max-w-[1400px] flex-col overflow-hidden rounded-2xl bg-[#f1f2f4] lg:flex-row">
+    <main className="min-h-dvh bg-[#232427] p-0 sm:p-2">
+      <section className="mx-auto flex min-h-dvh w-full max-w-none flex-col overflow-hidden rounded-none bg-[#f1f2f4] lg:flex-row sm:min-h-[calc(100dvh-16px)] sm:rounded-2xl">
         <aside className="hidden w-[260px] shrink-0 bg-gradient-to-b from-[#00130f] via-[#003526] to-[#00120f] px-6 py-8 text-white lg:flex lg:flex-col">
           <SiteLogo className="h-20 w-auto" width={300} height={100} />
           <p className="mt-10 text-sm uppercase tracking-[0.22em] text-emerald-100/70">Menu</p>
@@ -40,6 +41,10 @@ export function DashboardAboutClient({ fullName }: Props) {
             <Link href="/dashboard/search" className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-emerald-50/90 transition hover:bg-white/8">
               <MagnifyingGlassIcon className="h-5 w-5" />
               Search
+            </Link>
+            <Link href="/dashboard/sentiment" className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-emerald-50/90 transition hover:bg-white/8">
+              <ChartPieIcon className="h-5 w-5" />
+              Sentiment
             </Link>
           </nav>
 
@@ -64,6 +69,27 @@ export function DashboardAboutClient({ fullName }: Props) {
         </aside>
 
         <section className="w-full p-3 sm:p-4 lg:p-6">
+          <nav className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-2 text-sm lg:hidden">
+            <Link href="/dashboard" className="rounded-lg border border-slate-200 px-3 py-2 text-slate-700 transition hover:bg-slate-50">
+              Overview
+            </Link>
+            <Link href="/dashboard/trend" className="rounded-lg border border-slate-200 px-3 py-2 text-slate-700 transition hover:bg-slate-50">
+              Trends
+            </Link>
+            <Link href="/dashboard/powerbi" className="rounded-lg border border-slate-200 px-3 py-2 text-slate-700 transition hover:bg-slate-50">
+              Power BI
+            </Link>
+            <Link href="/dashboard/search" className="rounded-lg border border-slate-200 px-3 py-2 text-slate-700 transition hover:bg-slate-50">
+              Search
+            </Link>
+            <Link href="/dashboard/sentiment" className="rounded-lg border border-slate-200 px-3 py-2 text-slate-700 transition hover:bg-slate-50">
+              Sentiment
+            </Link>
+            <Link href="/dashboard/settings" className="rounded-lg border border-slate-200 px-3 py-2 text-slate-700 transition hover:bg-slate-50">
+              Settings
+            </Link>
+          </nav>
+
           <header className="rounded-xl border border-slate-200 bg-white px-3 py-3 sm:px-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
@@ -80,7 +106,7 @@ export function DashboardAboutClient({ fullName }: Props) {
             </p>
           </header>
 
-          <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-12">
+          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-12">
             <article className="rounded-2xl border border-slate-200 bg-white p-5 xl:col-span-4">
               <h3 className="text-xl font-semibold text-slate-900">Mission</h3>
               <p className="mt-2 text-sm text-slate-600">

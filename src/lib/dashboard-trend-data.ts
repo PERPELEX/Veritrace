@@ -1,4 +1,5 @@
 import { getSqlPool } from "@/lib/db";
+import { getOrSetServerCache, makeServerCacheKey } from "@/lib/server-cache";
 
 type TrendSummaryRow = {
   trendName: string;
@@ -8,6 +9,11 @@ type TrendSummaryRow = {
 
 type AvailableTrendRow = {
   trendName: string;
+};
+
+type TrendCountRow = {
+  trendCount: number | string | bigint;
+  totalTweets: number | string | bigint;
 };
 
 type DailyVolumeRow = {
@@ -26,6 +32,11 @@ type PosterOrderRow = {
   userName: string | null;
   userLocation: string | null;
   postedAt: Date | string | null;
+};
+
+type TopPosterRow = {
+  posterName: string | null;
+  tweetCount: number | string | bigint;
 };
 
 export type TrendSummary = {
@@ -80,6 +91,8 @@ export type TrendPageData = {
   trendHeatMap: TrendHeatMapPoint[];
   firstPoster: string;
   secondPoster: string;
+  topPoster: { name: string; tweetCount: number } | null;
+  top5Posters: Array<{ name: string; appearances: number }>;
   warning: string | null;
 };
 
@@ -218,23 +231,32 @@ function fallbackTrendData(message: string): TrendPageData {
     trendHeatMap: [],
     firstPoster: "N/A",
     secondPoster: "N/A",
+    topPoster: null,
+    top5Posters: [],
     warning: message,
   };
 }
 
 export async function getTrendPageData(filters?: TrendFilterOptions): Promise<TrendPageData> {
-  try {
-    const pool = await getSqlPool();
-    const startDate = normalizeDateInput(filters?.startDate);
-    const endDate = normalizeDateInput(filters?.endDate);
-    const trendName = normalizeTrendInput(filters?.trendName);
+  const cacheKey = makeServerCacheKey("dashboard-trend", {
+    startDate: filters?.startDate ?? "",
+    endDate: filters?.endDate ?? "",
+    trendName: filters?.trendName ?? "",
+  });
 
-    const topTrendsResult = await pool
-      .request()
-      .input("startDate", startDate)
-      .input("endDate", endDate)
-      .input("trendName", trendName)
-      .query<TrendSummaryRow>(`
+  return getOrSetServerCache(cacheKey, 30_000, async () => {
+    try {
+      const pool = await getSqlPool();
+      const startDate = normalizeDateInput(filters?.startDate);
+      const endDate = normalizeDateInput(filters?.endDate);
+      const trendName = normalizeTrendInput(filters?.trendName);
+
+      const topTrendsResult = await pool
+        .request()
+        .input("startDate", startDate)
+        .input("endDate", endDate)
+        .input("trendName", trendName)
+        .query<TrendSummaryRow>(`
       WITH parsed AS (
         SELECT
           TrendName,
@@ -314,6 +336,51 @@ export async function getTrendPageData(filters?: TrendFilterOptions): Promise<Tr
         AND (@endDate IS NULL OR CAST(parsedFilterDate AS date) <= TRY_CAST(@endDate AS date))
       GROUP BY TrendName
       ORDER BY TrendName ASC
+    `);
+
+    const trendCountResult = await pool
+      .request()
+      .input("startDate", startDate)
+      .input("endDate", endDate)
+      .input("trendName", trendName)
+      .query<TrendCountRow>(`
+      WITH parsed AS (
+        SELECT
+          TrendName,
+          COALESCE(
+            TRY_CONVERT(datetime2, CreatedAt, 126),
+            TRY_CONVERT(datetime2, CreatedAt, 120),
+            TRY_CONVERT(datetime2, CreatedAt, 103),
+            TRY_CONVERT(datetime2, CreatedAt, 105),
+            TRY_CONVERT(datetime2, CreatedAt, 101),
+            TRY_CONVERT(datetime2, CreatedAt, 112),
+            CAST(TRY_PARSE(CONVERT(nvarchar(100), CreatedAt) AS datetimeoffset USING 'en-US') AS datetime2),
+            CAST(TRY_PARSE(REPLACE(CONVERT(nvarchar(100), CreatedAt), ' +0000', '') AS datetime2 USING 'en-US') AS datetime2),
+            TRY_CAST(CreatedAt AS datetime2),
+            TRY_CONVERT(datetime2, TweetCollectedAt, 126),
+            TRY_CONVERT(datetime2, TweetCollectedAt, 120),
+            TRY_CONVERT(datetime2, TweetCollectedAt, 103),
+            TRY_CONVERT(datetime2, TweetCollectedAt, 105),
+            TRY_CONVERT(datetime2, TweetCollectedAt, 101),
+            TRY_CONVERT(datetime2, TweetCollectedAt, 112),
+            CAST(TRY_PARSE(CONVERT(nvarchar(100), TweetCollectedAt) AS datetimeoffset USING 'en-US') AS datetime2),
+            CAST(TRY_PARSE(REPLACE(CONVERT(nvarchar(100), TweetCollectedAt), ' +0000', '') AS datetime2 USING 'en-US') AS datetime2),
+            TRY_CAST(TweetCollectedAt AS datetime2)
+          ) AS parsedFilterDate
+        FROM dbo.TwitterTrendTweets_All
+      )
+      SELECT
+        COUNT(DISTINCT LTRIM(RTRIM(TrendName))) AS trendCount,
+        COUNT_BIG(1) AS totalTweets
+      FROM parsed
+      WHERE TrendName IS NOT NULL
+        AND LTRIM(RTRIM(TrendName)) <> ''
+        AND (
+          @trendName IS NULL
+          OR LOWER(LTRIM(RTRIM(TrendName))) = LOWER(LTRIM(RTRIM(@trendName)))
+        )
+        AND (@startDate IS NULL OR CAST(parsedFilterDate AS date) >= TRY_CAST(@startDate AS date))
+        AND (@endDate IS NULL OR CAST(parsedFilterDate AS date) <= TRY_CAST(@endDate AS date))
     `);
 
     const dailyVolumeResult = await pool
@@ -466,7 +533,7 @@ export async function getTrendPageData(filters?: TrendFilterOptions): Promise<Tr
         LEFT JOIN dbo.TwitterUsers u
           ON LOWER(REPLACE(LTRIM(RTRIM(u.ScreenName)), '@', '')) = LOWER(REPLACE(LTRIM(RTRIM(t.ScreenName)), '@', ''))
       )
-      SELECT TOP (4)
+      SELECT TOP (32)
         TweetID AS tweetId,
         ScreenName AS screenName,
         Username AS userName,
@@ -481,6 +548,50 @@ export async function getTrendPageData(filters?: TrendFilterOptions): Promise<Tr
         AND (@startDate IS NULL OR CAST(postedAt AS date) >= TRY_CAST(@startDate AS date))
         AND (@endDate IS NULL OR CAST(postedAt AS date) <= TRY_CAST(@endDate AS date))
       ORDER BY postedAt ASC
+    `);
+
+    const topPosterResult = await pool
+      .request()
+      .input("startDate", startDate)
+      .input("endDate", endDate)
+      .input("trendName", trendName)
+      .query<TopPosterRow>(`
+      WITH parsed AS (
+        SELECT
+          TrendName,
+          COALESCE(ScreenName, Username, 'Unknown User') AS posterName,
+          COALESCE(
+            TRY_CONVERT(datetime2, CreatedAt, 126),
+            TRY_CONVERT(datetime2, CreatedAt, 120),
+            TRY_CONVERT(datetime2, CreatedAt, 103),
+            TRY_CONVERT(datetime2, CreatedAt, 105),
+            TRY_CONVERT(datetime2, CreatedAt, 101),
+            TRY_CONVERT(datetime2, CreatedAt, 112),
+            TRY_CAST(CreatedAt AS datetime2),
+            TRY_CONVERT(datetime2, TweetCollectedAt, 126),
+            TRY_CONVERT(datetime2, TweetCollectedAt, 120),
+            TRY_CONVERT(datetime2, TweetCollectedAt, 103),
+            TRY_CONVERT(datetime2, TweetCollectedAt, 105),
+            TRY_CONVERT(datetime2, TweetCollectedAt, 101),
+            TRY_CONVERT(datetime2, TweetCollectedAt, 112),
+            TRY_CAST(TweetCollectedAt AS datetime2)
+          ) AS parsedDate
+        FROM dbo.TwitterTrendTweets_All
+      )
+      SELECT TOP (1)
+        posterName,
+        COUNT_BIG(1) AS tweetCount
+      FROM parsed
+      WHERE posterName IS NOT NULL
+        AND posterName <> ''
+        AND (
+          @trendName IS NULL
+          OR LOWER(LTRIM(RTRIM(TrendName))) = LOWER(LTRIM(RTRIM(@trendName)))
+        )
+        AND (@startDate IS NULL OR CAST(parsedDate AS date) >= TRY_CAST(@startDate AS date))
+        AND (@endDate IS NULL OR CAST(parsedDate AS date) <= TRY_CAST(@endDate AS date))
+      GROUP BY posterName
+      ORDER BY COUNT_BIG(1) DESC
     `);
 
     const topTrends = topTrendsResult.recordset.map((row) => ({
@@ -542,26 +653,49 @@ export async function getTrendPageData(filters?: TrendFilterOptions): Promise<Tr
     const firstPoster = posterTree[0]?.label ?? "N/A";
     const secondPoster = posterTree[1]?.label ?? "N/A";
 
-    const totalTweets = topTrends.reduce((sum, trend) => sum + trend.tweetCount, 0);
+    const topPoster = topPosterResult.recordset[0]
+      ? {
+          name: String(topPosterResult.recordset[0].posterName || "Unknown User"),
+          tweetCount: safeNumber(topPosterResult.recordset[0].tweetCount),
+        }
+      : null;
 
-    return {
-      totalTweets,
-      trendCount: topTrends.length,
-      topTrends,
-      availableTrends,
-      selectedTrendName: trendName ?? "",
-      selectedStartDate: startDate ?? "",
-      selectedEndDate: endDate ?? "",
-      dailyVolume,
-      posterTree,
-      posterTimeline,
-      trendHeatMap,
-      firstPoster,
-      secondPoster,
-      warning: null,
-    };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown trend data error";
-    return fallbackTrendData(`Trend data fallback enabled: ${message}`);
-  }
+    // Calculate top 5 most frequent posters in the sequence
+    const posterFrequency = new Map<string, number>();
+    posterTree.forEach((node) => {
+      const count = posterFrequency.get(node.label) ?? 0;
+      posterFrequency.set(node.label, count + 1);
+    });
+
+    const top5Posters = Array.from(posterFrequency.entries())
+      .map(([name, appearances]) => ({ name, appearances }))
+      .sort((a, b) => b.appearances - a.appearances)
+      .slice(0, 5);
+
+    const totalTweets = safeNumber(trendCountResult.recordset[0]?.totalTweets ?? 0);
+    const trendCount = safeNumber(trendCountResult.recordset[0]?.trendCount ?? 0);
+
+      return {
+        totalTweets,
+        trendCount,
+        topTrends,
+        availableTrends,
+        selectedTrendName: trendName ?? "",
+        selectedStartDate: startDate ?? "",
+        selectedEndDate: endDate ?? "",
+        dailyVolume,
+        posterTree,
+        posterTimeline,
+        trendHeatMap,
+        firstPoster,
+        secondPoster,
+        topPoster,
+        top5Posters,
+        warning: null,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown trend data error";
+      return fallbackTrendData(`Trend data fallback enabled: ${message}`);
+    }
+  });
 }

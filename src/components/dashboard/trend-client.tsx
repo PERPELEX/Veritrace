@@ -5,6 +5,7 @@ import {
   GlobeAltIcon,
   MagnifyingGlassIcon,
   ComputerDesktopIcon,
+  ChartPieIcon,
   Squares2X2Icon,
   ClockIcon,
   Cog6ToothIcon,
@@ -17,8 +18,11 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   Line,
   LineChart,
+  Pie,
+  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -46,6 +50,8 @@ const heatLevelStyles: Record<string, string> = {
   medium: "bg-[#9acb3f] text-slate-900",
   high: "bg-[#fe9f1c] text-white",
 };
+
+const trendPalette = ["#2f7f76", "#9acb3f", "#f59e0b", "#38bdf8", "#6366f1", "#ef4444"];
 
 export function DashboardTrendClient({ fullName, trendData }: Props) {
   const router = useRouter();
@@ -135,8 +141,12 @@ export function DashboardTrendClient({ fullName, trendData }: Props) {
 
   const treeLevels = useMemo(() => {
     const levels: typeof trendData.posterTree[] = [];
+    const MAX_LEVELS = 5;
+    if (!trendData?.posterTree?.length) {
+      return levels;
+    }
     trendData.posterTree.forEach((node, index) => {
-      const level = Math.floor(Math.log2(index + 1));
+      const level = Math.min(Math.floor(Math.log2(index + 1)), MAX_LEVELS - 1);
       if (!levels[level]) {
         levels[level] = [];
       }
@@ -145,13 +155,38 @@ export function DashboardTrendClient({ fullName, trendData }: Props) {
     return levels;
   }, [trendData]);
 
+  const momentumData = useMemo(
+    () =>
+      trendData.dailyVolume.map((point, index) => {
+        const previous = index > 0 ? trendData.dailyVolume[index - 1].tweetCount : 0;
+        const delta = index > 0 ? point.tweetCount - previous : 0;
+        const pctDelta = previous > 0 ? (delta / previous) * 100 : 0;
+        return {
+          dayLabel: point.dayLabel,
+          tweetCount: point.tweetCount,
+          delta,
+          pctDelta: Number.isFinite(pctDelta) ? Math.round(pctDelta) : 0,
+        };
+      }),
+    [trendData.dailyVolume],
+  );
+
+  const trendShareData = useMemo(() => {
+    const total = trendData.topTrends.reduce((sum, item) => sum + item.tweetCount, 0);
+    return trendData.topTrends.slice(0, 6).map((item) => ({
+      trendName: item.trendName,
+      tweetCount: item.tweetCount,
+      sharePct: total > 0 ? Math.round((item.tweetCount / total) * 100) : 0,
+    }));
+  }, [trendData.topTrends]);
+
   useEffect(() => {
     setChartsReady(true);
   }, []);
 
   return (
-    <main className="min-h-screen bg-[#232427] p-2 sm:p-3">
-      <section className="mx-auto flex min-h-[calc(100vh-12px)] max-w-[1400px] flex-col overflow-hidden rounded-2xl bg-[#f1f2f4] lg:flex-row">
+    <main className="min-h-dvh bg-[#232427] p-0 sm:p-2">
+      <section className="mx-auto flex min-h-dvh w-full max-w-none flex-col overflow-hidden rounded-none bg-[#f1f2f4] lg:flex-row sm:min-h-[calc(100dvh-16px)] sm:rounded-2xl">
         <aside className="hidden w-[260px] shrink-0 bg-gradient-to-b from-[#00130f] via-[#003526] to-[#00120f] px-6 py-8 text-white lg:flex lg:flex-col">
           <SiteLogo className="h-20 w-auto" width={300} height={100} />
           <p className="mt-10 text-sm uppercase tracking-[0.22em] text-emerald-100/70">Menu</p>
@@ -177,6 +212,10 @@ export function DashboardTrendClient({ fullName, trendData }: Props) {
               <MagnifyingGlassIcon className="h-5 w-5" />
               Search
             </Link>
+            <Link href="/dashboard/sentiment" className="flex items-center gap-3 rounded-lg px-3 py-2 text-emerald-50/90 transition hover:bg-white/8">
+              <ChartPieIcon className="h-5 w-5" />
+              Sentiment
+            </Link>
           </nav>
 
           <div className="my-8 border-t border-emerald-100/20" />
@@ -200,6 +239,33 @@ export function DashboardTrendClient({ fullName, trendData }: Props) {
         </aside>
 
         <section className="w-full p-3 sm:p-4 lg:p-6">
+          <nav className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-2 text-sm lg:hidden">
+            <Link href="/dashboard" className="rounded-lg border border-slate-200 px-3 py-2 text-slate-700 transition hover:bg-slate-50">
+              Overview
+            </Link>
+            <Link href="/dashboard/trend" className="rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-slate-800">
+              Trends
+            </Link>
+            <Link href="/dashboard/powerbi" className="rounded-lg border border-slate-200 px-3 py-2 text-slate-700 transition hover:bg-slate-50">
+              Power BI
+            </Link>
+            <Link href="/dashboard/cluster" className="rounded-lg border border-slate-200 px-3 py-2 text-slate-700 transition hover:bg-slate-50">
+              Clusters
+            </Link>
+            <Link href="/dashboard/search" className="rounded-lg border border-slate-200 px-3 py-2 text-slate-700 transition hover:bg-slate-50">
+              Search
+            </Link>
+            <Link href="/dashboard/sentiment" className="rounded-lg border border-slate-200 px-3 py-2 text-slate-700 transition hover:bg-slate-50">
+              Sentiment
+            </Link>
+            <Link href="/dashboard/about" className="rounded-lg border border-slate-200 px-3 py-2 text-slate-700 transition hover:bg-slate-50">
+              About
+            </Link>
+            <Link href="/dashboard/settings" className="rounded-lg border border-slate-200 px-3 py-2 text-slate-700 transition hover:bg-slate-50">
+              Settings
+            </Link>
+          </nav>
+
           {trendData.warning ? (
             <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
               {trendData.warning}
@@ -208,7 +274,7 @@ export function DashboardTrendClient({ fullName, trendData }: Props) {
 
           <header className="rounded-xl border border-slate-200 bg-white px-3 py-3 sm:px-4">
             <h2 className="font-[var(--font-space-grotesk)] text-2xl font-semibold text-slate-900 sm:text-3xl">Trend Analysis</h2>
-            <p className="text-sm text-slate-500">Live trend volume from TwitterTrendTweets_All</p>
+            <p className="text-sm text-slate-500">Live trend volume analytics</p>
             <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2">
               <input
                 type="date"
@@ -287,6 +353,14 @@ export function DashboardTrendClient({ fullName, trendData }: Props) {
             </article>
           </div>
 
+          {trendData.selectedTrendName && trendData.topPoster ? (
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-5">
+              <p className="text-sm uppercase tracking-[0.2em] text-slate-500">Top Poster on {trendData.selectedTrendName}</p>
+              <p className="mt-3 break-words text-2xl leading-tight font-semibold text-slate-900">{trendData.topPoster.name}</p>
+              <p className="mt-1 text-sm text-slate-500">{formatCompact(trendData.topPoster.tweetCount)} tweets</p>
+            </div>
+          ) : null}
+
           <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-12">
             <article className="rounded-2xl border border-slate-200 bg-white p-5 xl:col-span-7">
               <p className="text-xl font-semibold text-slate-800">Daily Tweet Volume (Last 7 Days)</p>
@@ -311,18 +385,82 @@ export function DashboardTrendClient({ fullName, trendData }: Props) {
             </article>
 
             <article className="rounded-2xl border border-slate-200 bg-white p-5 xl:col-span-5">
-              <p className="text-xl font-semibold text-slate-800">Top Trends by Tweet Count</p>
-              <div className="mt-3 max-h-[370px] space-y-2 overflow-y-auto pr-1">
-                {trendData.topTrends.map((trend) => (
-                  <div key={trend.trendName} className="rounded-lg border border-slate-200 px-3 py-2">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-semibold text-slate-800">{trend.trendName}</p>
-                      <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-medium text-emerald-700">Verified</span>
+              <p className="text-xl font-semibold text-slate-800">Trend Momentum (Day-over-Day)</p>
+              <p className="text-xs text-slate-500">Shows acceleration or slowdown between consecutive days.</p>
+              <div className="mt-3 h-64 w-full min-w-0 overflow-hidden sm:h-72">
+                {chartsReady ? (
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={240}>
+                    <LineChart data={momentumData}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                      <XAxis dataKey="dayLabel" tick={{ fontSize: 12, fill: "#334155" }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fontSize: 12, fill: "#334155" }} axisLine={false} tickLine={false} />
+                      <Tooltip
+                        formatter={(value, name) => {
+                          if (name === "delta") {
+                            return [`${formatCompact(Number(value))} tweets`, "Daily change"];
+                          }
+                          if (name === "pctDelta") {
+                            return [`${Number(value)}%`, "Change %"];
+                          }
+                          return [formatCompact(Number(value)), "Tweets"];
+                        }}
+                        contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
+                      />
+                      <Line type="monotone" dataKey="delta" stroke="#f59e0b" strokeWidth={2.5} dot={{ r: 3 }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-full w-full rounded-xl bg-slate-100" />
+                )}
+              </div>
+            </article>
+
+            <article className="rounded-2xl border border-slate-200 bg-white p-5 xl:col-span-4">
+              <p className="text-xl font-semibold text-slate-800">Top Trend Share</p>
+              <p className="text-xs text-slate-500">Relative share across current leading trends.</p>
+              <div className="mt-3 h-64 w-full min-w-0 overflow-hidden">
+                {chartsReady ? (
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={220}>
+                    <BarChart data={trendShareData} layout="vertical" margin={{ top: 5, right: 20, left: 100, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                      <XAxis type="number" tick={{ fontSize: 11, fill: "#334155" }} axisLine={false} tickLine={false} />
+                      <YAxis type="category" dataKey="trendName" tick={{ fontSize: 10, fill: "#334155" }} axisLine={false} tickLine={false} width={95} />
+                      <Tooltip
+                        formatter={(value, _name, item) => {
+                          const payload = item.payload as { sharePct: number };
+                          return [`${formatCompact(Number(value))} tweets (${payload.sharePct}%)`, "Share"];
+                        }}
+                        contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
+                      />
+                      <Bar dataKey="tweetCount" fill="#2f7f76" radius={[0, 6, 6, 0]}>
+                        {trendShareData.map((item, index) => (
+                          <Cell key={item.trendName} fill={trendPalette[index % trendPalette.length]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-full w-full rounded-xl bg-slate-100" />
+                )}
+              </div>
+            </article>
+
+            <article className="rounded-2xl border border-slate-200 bg-white p-5 xl:col-span-8">
+              <p className="text-xl font-semibold text-slate-800">Top 5 Posters in Sequence</p>
+              <div className="mt-3 space-y-2">
+                {trendData.top5Posters.length > 0 ? (
+                  trendData.top5Posters.map((poster, index) => (
+                    <div key={poster.name} className="flex items-center justify-between rounded-lg border border-slate-200 px-3 py-2">
+                      <div>
+                        <p className="text-sm font-semibold text-slate-800">#{index + 1}</p>
+                        <p className="text-sm text-slate-700">{poster.name}</p>
+                      </div>
+                      <span className="rounded-full bg-emerald-100 px-3 py-1 text-sm font-medium text-emerald-700">{poster.appearances}</span>
                     </div>
-                    <p className="mt-1 text-xs text-slate-500">{formatCompact(trend.tweetCount)} tweets</p>
-                    <p className="text-xs text-slate-400">Last seen: {trend.latestSeen}</p>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-sm text-slate-500">No poster sequence data available.</p>
+                )}
               </div>
             </article>
 

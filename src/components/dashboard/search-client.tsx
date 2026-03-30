@@ -16,6 +16,7 @@ import {
   GlobeAltIcon,
   MagnifyingGlassIcon,
   ComputerDesktopIcon,
+  ChartPieIcon,
   Squares2X2Icon,
   ClockIcon,
   Cog6ToothIcon,
@@ -90,6 +91,7 @@ export function DashboardSearchClient({ fullName, searchData }: Props) {
     (currentPage - 1) * TWEETS_PER_PAGE,
     currentPage * TWEETS_PER_PAGE,
   );
+  const hasActiveUserSearch = Boolean(searchData.query.trim());
 
   const applyFilters = () => {
     if (startDate && endDate && startDate > endDate) {
@@ -160,8 +162,8 @@ export function DashboardSearchClient({ fullName, searchData }: Props) {
   };
 
   return (
-    <main className="min-h-screen bg-[#232427] p-2 sm:p-3">
-      <section className="mx-auto flex min-h-[calc(100vh-12px)] max-w-[1400px] flex-col overflow-hidden rounded-2xl bg-[#f1f2f4] lg:flex-row">
+    <main className="min-h-dvh bg-[#232427] p-0 sm:p-2">
+      <section className="mx-auto flex min-h-dvh w-full max-w-none flex-col overflow-hidden rounded-none bg-[#f1f2f4] lg:flex-row sm:min-h-[calc(100dvh-16px)] sm:rounded-2xl">
         <aside className="hidden w-[260px] shrink-0 bg-gradient-to-b from-[#00130f] via-[#003526] to-[#00120f] px-6 py-8 text-white lg:flex lg:flex-col">
           <SiteLogo className="h-20 w-auto" width={300} height={100} />
           <p className="mt-10 text-sm uppercase tracking-[0.22em] text-emerald-100/70">Menu</p>
@@ -187,6 +189,10 @@ export function DashboardSearchClient({ fullName, searchData }: Props) {
               <MagnifyingGlassIcon className="h-5 w-5" />
               Search
             </Link>
+            <Link href="/dashboard/sentiment" className="flex items-center gap-3 rounded-lg px-3 py-2 text-emerald-50/90 transition hover:bg-white/8">
+              <ChartPieIcon className="h-5 w-5" />
+              Sentiment
+            </Link>
           </nav>
 
           <div className="my-8 border-t border-emerald-100/20" />
@@ -210,6 +216,33 @@ export function DashboardSearchClient({ fullName, searchData }: Props) {
         </aside>
 
         <section className="w-full p-3 sm:p-4 lg:p-6">
+          <nav className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-2 text-sm lg:hidden">
+            <Link href="/dashboard" className="rounded-lg border border-slate-200 px-3 py-2 text-slate-700 transition hover:bg-slate-50">
+              Overview
+            </Link>
+            <Link href="/dashboard/trend" className="rounded-lg border border-slate-200 px-3 py-2 text-slate-700 transition hover:bg-slate-50">
+              Trends
+            </Link>
+            <Link href="/dashboard/powerbi" className="rounded-lg border border-slate-200 px-3 py-2 text-slate-700 transition hover:bg-slate-50">
+              Power BI
+            </Link>
+            <Link href="/dashboard/cluster" className="rounded-lg border border-slate-200 px-3 py-2 text-slate-700 transition hover:bg-slate-50">
+              Clusters
+            </Link>
+            <Link href="/dashboard/search" className="rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-slate-800">
+              Search
+            </Link>
+            <Link href="/dashboard/sentiment" className="rounded-lg border border-slate-200 px-3 py-2 text-slate-700 transition hover:bg-slate-50">
+              Sentiment
+            </Link>
+            <Link href="/dashboard/about" className="rounded-lg border border-slate-200 px-3 py-2 text-slate-700 transition hover:bg-slate-50">
+              About
+            </Link>
+            <Link href="/dashboard/settings" className="rounded-lg border border-slate-200 px-3 py-2 text-slate-700 transition hover:bg-slate-50">
+              Settings
+            </Link>
+          </nav>
+
           {searchData.warning ? (
             <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
               {searchData.warning}
@@ -275,46 +308,48 @@ export function DashboardSearchClient({ fullName, searchData }: Props) {
             {filterError ? <p className="mt-2 text-xs text-red-600">{filterError}</p> : null}
           </header>
 
-          <article className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-lg font-semibold text-slate-800">Most Active Users</p>
-              <p className="text-xs text-slate-500">Highest to lowest tweet count</p>
-            </div>
-            {searchData.userRanking.length ? (
-              <div className="mt-3 overflow-x-auto">
-                <table className="min-w-full border-collapse text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-[0.12em] text-slate-500">
-                      <th className="px-2 py-2">Rank</th>
-                      <th className="px-2 py-2">Screen Name</th>
-                      <th className="px-2 py-2">User Name</th>
-                      <th className="px-2 py-2">Tweets</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {searchData.userRanking.map((user, index) => (
-                      <tr key={`${user.screenName}-${index}`} className="border-b border-slate-100 text-slate-700">
-                        <td className="px-2 py-2 font-medium">#{index + 1}</td>
-                        <td className="px-2 py-2 whitespace-nowrap font-semibold">
-                          <button
-                            onClick={() => openUserFromRanking(user.screenName)}
-                            className="rounded-md px-2 py-1 text-left text-emerald-700 transition hover:bg-emerald-50 hover:text-emerald-900"
-                            title={`Open ${user.screenName}`}
-                          >
-                            {user.screenName}
-                          </button>
-                        </td>
-                        <td className="px-2 py-2">{user.userName}</td>
-                        <td className="px-2 py-2 whitespace-nowrap">{formatCompact(user.tweetCount)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+          {!hasActiveUserSearch ? (
+            <article className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-lg font-semibold text-slate-800">Most Active Users</p>
+                <p className="text-xs text-slate-500">Highest to lowest tweet count</p>
               </div>
-            ) : (
-              <p className="mt-3 text-sm text-slate-600">No user ranking data found for the selected filters.</p>
-            )}
-          </article>
+              {searchData.userRanking.length ? (
+                <div className="mt-3 overflow-x-auto">
+                  <table className="min-w-full border-collapse text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-[0.12em] text-slate-500">
+                        <th className="px-2 py-2">Rank</th>
+                        <th className="px-2 py-2">Screen Name</th>
+                        <th className="px-2 py-2">User Name</th>
+                        <th className="px-2 py-2">Tweets</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {searchData.userRanking.map((user, index) => (
+                        <tr key={`${user.screenName}-${index}`} className="border-b border-slate-100 text-slate-700">
+                          <td className="px-2 py-2 font-medium">#{index + 1}</td>
+                          <td className="px-2 py-2 whitespace-nowrap font-semibold">
+                            <button
+                              onClick={() => openUserFromRanking(user.screenName)}
+                              className="rounded-md px-2 py-1 text-left text-emerald-700 transition hover:bg-emerald-50 hover:text-emerald-900"
+                              title={`Open ${user.screenName}`}
+                            >
+                              {user.screenName}
+                            </button>
+                          </td>
+                          <td className="px-2 py-2">{user.userName}</td>
+                          <td className="px-2 py-2 whitespace-nowrap">{formatCompact(user.tweetCount)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="mt-3 text-sm text-slate-600">No user ranking data found for the selected filters.</p>
+              )}
+            </article>
+          ) : null}
 
           {searchData.profile ? (
             <>
@@ -478,7 +513,9 @@ export function DashboardSearchClient({ fullName, searchData }: Props) {
             </>
           ) : (
             <article className="mt-4 rounded-2xl border border-slate-200 bg-white p-5 text-sm text-slate-600">
-              Enter a user handle and click Apply to load account details, graphs, and tweet feed.
+              {hasActiveUserSearch
+                ? "No matching user details found for the searched handle."
+                : "Enter a user handle and click Apply to load account details, graphs, and tweet feed."}
             </article>
           )}
         </section>

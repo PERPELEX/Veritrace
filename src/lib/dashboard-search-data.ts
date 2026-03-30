@@ -1,4 +1,5 @@
 import { getSqlPool } from "@/lib/db";
+import { getOrSetServerCache, makeServerCacheKey } from "@/lib/server-cache";
 
 type UserProfileRow = {
   screenName: string | null;
@@ -189,13 +190,24 @@ function emptyResult(filters: SearchFilterOptions, warning: string | null = null
 export async function getSearchPageData(filters?: SearchFilterOptions): Promise<SearchPageData> {
   const safeFilters: SearchFilterOptions = filters ?? {};
   const query = normalizeInput(safeFilters.query);
+  const normalizedQuery = query.replace(/^@/, "").trim().toLowerCase();
   const startDate = normalizeDateInput(safeFilters.startDate);
   const endDate = normalizeDateInput(safeFilters.endDate);
   const trendName = normalizeInput(safeFilters.trendName);
   const keyword = normalizeInput(safeFilters.keyword);
 
-  try {
-    const pool = await getSqlPool();
+  const cacheKey = makeServerCacheKey("dashboard-search", {
+    query,
+    startDate,
+    endDate,
+    trendName,
+    keyword,
+  });
+
+  return getOrSetServerCache(cacheKey, 15_000, async () => {
+
+    try {
+      const pool = await getSqlPool();
 
     const rankingResult = await pool
       .request()
@@ -267,6 +279,7 @@ export async function getSearchPageData(filters?: SearchFilterOptions): Promise<
     const profileResult = await pool
       .request()
       .input("query", query)
+      .input("queryNormalized", normalizedQuery || null)
       .query<UserProfileRow>(`
         SELECT TOP (1)
           ScreenName AS screenName,
@@ -276,10 +289,17 @@ export async function getSearchPageData(filters?: SearchFilterOptions): Promise<
         WHERE ScreenName IS NOT NULL
           AND LTRIM(RTRIM(ScreenName)) <> ''
           AND (
-            LOWER(LTRIM(RTRIM(ScreenName))) LIKE CONCAT('%', LOWER(LTRIM(RTRIM(@query))), '%')
+            LOWER(REPLACE(LTRIM(RTRIM(ScreenName)), '@', '')) = @queryNormalized
+            OR LOWER(LTRIM(RTRIM(ScreenName))) LIKE CONCAT('%', LOWER(LTRIM(RTRIM(@query))), '%')
             OR LOWER(REPLACE(LTRIM(RTRIM(ScreenName)), '@', '')) LIKE CONCAT('%', LOWER(REPLACE(LTRIM(RTRIM(@query)), '@', '')), '%')
           )
-        ORDER BY LastUpdated DESC
+        ORDER BY
+          CASE
+            WHEN LOWER(REPLACE(LTRIM(RTRIM(ScreenName)), '@', '')) = @queryNormalized THEN 0
+            WHEN LOWER(REPLACE(LTRIM(RTRIM(ScreenName)), '@', '')) LIKE CONCAT(@queryNormalized, '%') THEN 1
+            ELSE 2
+          END,
+          LastUpdated DESC
       `);
 
     const profileRow = profileResult.recordset[0];
@@ -452,23 +472,24 @@ export async function getSearchPageData(filters?: SearchFilterOptions): Promise<
       uniqueTrends: safeNumber(summary.uniqueTrends),
     };
 
-    return {
-      query,
-      selectedStartDate: startDate,
-      selectedEndDate: endDate,
-      selectedTrendName: trendName,
-      selectedKeyword: keyword,
-      profile,
-      availableTrends,
-      dailyVolume,
-      hourlyVolume,
-      trendDistribution,
-      tweets,
-      userRanking,
-      warning: null,
-    };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown search data error";
-    return emptyResult(safeFilters, `Search data fallback enabled: ${message}`);
-  }
+      return {
+        query,
+        selectedStartDate: startDate,
+        selectedEndDate: endDate,
+        selectedTrendName: trendName,
+        selectedKeyword: keyword,
+        profile,
+        availableTrends,
+        dailyVolume,
+        hourlyVolume,
+        trendDistribution,
+        tweets,
+        userRanking,
+        warning: null,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown search data error";
+      return emptyResult(safeFilters, `Search data fallback enabled: ${message}`);
+    }
+  });
 }
