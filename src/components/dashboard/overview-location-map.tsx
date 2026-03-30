@@ -1,7 +1,13 @@
 "use client";
 
 import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
+import type { ComponentType } from "react";
 import type { HeatMapPoint } from "@/lib/dashboard-types";
+
+const MapContainerAny = MapContainer as unknown as ComponentType<any>;
+const TileLayerAny = TileLayer as unknown as ComponentType<any>;
+const CircleMarkerAny = CircleMarker as unknown as ComponentType<any>;
+const PopupAny = Popup as unknown as ComponentType<any>;
 
 type Props = {
   points: HeatMapPoint[];
@@ -105,6 +111,8 @@ function formatCompact(n: number) {
 }
 
 export function OverviewLocationMap({ points }: Props) {
+  const worldBounds: [[number, number], [number, number]] = [[-55, -170], [75, 170]];
+
   const plottedPoints = points
     .map((point) => {
       const coords = resolveCoordinates(point.location);
@@ -125,21 +133,17 @@ export function OverviewLocationMap({ points }: Props) {
   return (
     <div>
       <div className="h-[320px] w-full overflow-hidden rounded-xl border border-slate-200">
-        <MapContainer
-          center={[20, 0]}
-          zoom={2}
-          minZoom={1}
-          maxZoom={7}
-          scrollWheelZoom={false}
+        <MapContainerAny
+          bounds={worldBounds}
           style={{ height: "100%", width: "100%" }}
         >
-          <TileLayer
+          <TileLayerAny
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
 
           {plottedPoints.map((point) => (
-            <CircleMarker
+            <CircleMarkerAny
               key={`${point.location}-${point.lat}-${point.lng}`}
               center={[point.lat, point.lng]}
               radius={getRadius(point.tweets, maxTweets)}
@@ -150,16 +154,16 @@ export function OverviewLocationMap({ points }: Props) {
                 fillOpacity: 0.75,
               }}
             >
-              <Popup>
+              <PopupAny>
                 <div className="text-sm">
                   <p className="font-semibold">{point.location}</p>
                   <p>{formatCompact(point.tweets)} tweets</p>
                   <p className="capitalize">{point.level} intensity</p>
                 </div>
-              </Popup>
-            </CircleMarker>
+              </PopupAny>
+            </CircleMarkerAny>
           ))}
-        </MapContainer>
+        </MapContainerAny>
       </div>
 
       <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-600">
