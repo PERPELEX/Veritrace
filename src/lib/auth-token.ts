@@ -1,34 +1,35 @@
-import { JWTPayload, SignJWT, jwtVerify } from "jose";
+import jwt from "jsonwebtoken";
 
-export type SessionTokenPayload = JWTPayload & {
-  userId: number;
-  username: string;
+export type SessionTokenPayload = {
+  userId: string;
   role: string;
   fullName: string;
+  email: string;
 };
 
-function getJwtSecret() {
-  const secret = process.env.JWT_SECRET;
+/**
+ * Verify an access token and return session data.
+ * Maps MongoDB user fields to dashboard-compatible shape.
+ */
+export function verifySessionFromToken(
+  token: string | undefined
+): SessionTokenPayload | null {
+  if (!token) return null;
 
-  if (!secret || secret.trim().length === 0) {
-    throw new Error("Missing or empty JWT_SECRET environment variable. Please set JWT_SECRET in your .env.local file.");
-  }
-
-  return new TextEncoder().encode(secret);
-}
-
-export async function signSessionToken(payload: SessionTokenPayload) {
-  return new SignJWT(payload)
-    .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt()
-    .setExpirationTime("12h")
-    .sign(getJwtSecret());
-}
-
-export async function verifySessionToken(token: string) {
   try {
-    const { payload } = await jwtVerify(token, getJwtSecret());
-    return payload as SessionTokenPayload;
+    const decoded = jwt.verify(
+      token,
+      process.env.ACCESS_TOKEN_SECRET as string
+    ) as { userId: string; role: string };
+
+    // We only have userId and role in the JWT.
+    // Return what we can — the full session lookup happens in session.ts
+    return {
+      userId: decoded.userId,
+      role: decoded.role,
+      fullName: "", // Will be populated from DB lookup in session.ts
+      email: "",
+    };
   } catch {
     return null;
   }

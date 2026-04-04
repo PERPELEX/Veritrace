@@ -1,83 +1,69 @@
-import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
-import { z } from "zod";
-import { signSessionToken } from "@/lib/auth-token";
-import { getSqlPool } from "@/lib/db";
-
-const loginSchema = z.object({
-  username: z.string().trim().min(3).max(100),
-  password: z.string().min(8).max(128),
-});
-
-type AdminUserRecord = {
-  id: number;
-  username: string;
-  password_hash: string;
-  full_name: string;
-  role: string;
-};
+import { connectMongo } from "@/server/mongoose";
+import User from "@/server/models/User";
+import {
+  generateAccessToken,
+  generateRefreshToken,
+  setAccessTokenCookie,
+  setRefreshTokenCookie,
+} from "@/server/utils/authUtils";
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const payload = loginSchema.parse(body);
+    await connectMongo();
+    const { email, password } = await request.json();
 
-    const pool = await getSqlPool();
-    const result = await pool
-      .request()
-      .input("username", payload.username)
-      .query<AdminUserRecord>(`
-        SELECT TOP 1 id, username, password_hash, full_name, role
-        FROM dbo.AdminLogin
-        WHERE username = @username AND is_active = 1
-      `);
+    if (!email || !password) {
+      return NextResponse.json(
+        { message: "Email and password are required" },
+        { status: 400 }
+      );
+    }
 
-    const user = result.recordset[0];
-
+    const user = await User.findOne({ email });
     if (!user) {
-      return NextResponse.json({ success: false, message: "Invalid username or password." }, { status: 401 });
+      return NextResponse.json(
+        { message: "Invalid credentials" },
+        { status: 400 }
+      );
     }
 
-    const valid = await bcrypt.compare(payload.password, user.password_hash);
-
-    if (!valid) {
-      return NextResponse.json({ success: false, message: "Invalid username or password." }, { status: 401 });
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      return NextResponse.json(
+        { message: "Invalid credentials" },
+        { status: 400 }
+      );
     }
 
-    const token = await signSessionToken({
-      userId: user.id,
-      username: user.username,
-      role: user.role,
-      fullName: user.full_name,
+    const accessToken = generateAccessToken(
+      user._id.toString(),
+      user.role
+    );
+    const refreshToken = generateRefreshToken(
+      user._id.toString(),
+      user.role
+    );
+
+    const response = NextResponse.json({
+      message: "Login successful",
+      user: {
+        id: user._id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+      },
     });
 
-    const response = NextResponse.json({ success: true });
-    response.cookies.set("veritrace_session", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      path: "/",
-      maxAge: 60 * 60 * 12,
-    });
+    setAccessTokenCookie(response, accessToken);
+    setRefreshTokenCookie(response, refreshToken);
 
     return response;
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ success: false, message: "Enter valid credentials." }, { status: 400 });
-    }
-
-    const errorMessage = error instanceof Error ? error.message : "Unknown login error";
-    console.error("Login route error:", error);
-
+  } catch (err: any) {
+    console.error("Login error:", err);
     return NextResponse.json(
-      {
-        success: false,
-        message:
-          process.env.NODE_ENV === "development"
-            ? `Login failed: ${errorMessage}`
-            : "Login failed due to server configuration. Please verify DB settings.",
-      },
-      { status: 500 },
+      { message: "Server error", error: err.message },
+      { status: 500 }
     );
   }
 }

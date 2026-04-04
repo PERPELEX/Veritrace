@@ -25,6 +25,12 @@ body {
   font-family: var(--font-manrope), sans-serif;
 }
 
+/* ── Poppins for auth pages ── */
+.poppins {
+  font-family: var(--font-poppins);
+}
+
+/* ── Auth / Login Shell ── */
 .veritrace-shell {
   min-height: 100dvh;
   padding: 14px;

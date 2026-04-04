@@ -19,8 +19,8 @@ type Props = {
 export function DashboardPowerBiClient({ fullName }: Props) {
   return (
     <main className="min-h-dvh bg-[#232427] p-0 sm:p-2">
-      <section className="mx-auto flex min-h-dvh w-full max-w-none flex-col overflow-hidden rounded-none bg-[#f1f2f4] lg:flex-row sm:min-h-[calc(100dvh-16px)] sm:rounded-2xl">
-        <aside className="hidden w-[260px] shrink-0 bg-gradient-to-b from-[#00130f] via-[#003526] to-[#00120f] px-6 py-8 text-white lg:flex lg:flex-col">
+      <section className="mx-auto flex min-h-dvh w-full max-w-none flex-col overflow-hidden rounded-none bg-[#f1f2f4] lg:flex-row lg:h-[calc(100dvh-16px)] sm:min-h-[calc(100dvh-16px)] sm:rounded-2xl">
+        <aside className="hidden w-[260px] shrink-0 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden bg-gradient-to-b from-[#00130f] via-[#003526] to-[#00120f] px-6 py-8 text-white lg:flex lg:flex-col">
           <SiteLogo className="h-20 w-auto" width={300} height={100} />
           <p className="mt-10 text-sm uppercase tracking-[0.22em] text-emerald-100/70">Menu</p>
 
@@ -67,7 +67,7 @@ export function DashboardPowerBiClient({ fullName }: Props) {
           </div>
         </aside>
 
-        <section className="w-full p-3 sm:p-4 lg:p-6">
+        <section className="w-full p-3 sm:p-4 lg:p-6 overflow-y-auto">
           <nav className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-2 text-sm lg:hidden">
             <Link href="/dashboard" className="rounded-lg border border-slate-200 px-3 py-2 text-slate-700 transition hover:bg-slate-50">
               Overview

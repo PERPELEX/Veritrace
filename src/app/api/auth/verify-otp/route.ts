@@ -1,0 +1,54 @@
+import { NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
+import { connectMongo } from "@/server/mongoose";
+import User from "@/server/models/User";
+
+export async function POST(request: Request) {
+  try {
+    await connectMongo();
+    const { email, otp } = await request.json();
+
+    if (!email || !otp) {
+      return NextResponse.json(
+        { message: "Email and OTP are required" },
+        { status: 400 }
+      );
+    }
+
+    const user = await User.findOne({ email });
+    if (!user || !user.otp) {
+      return NextResponse.json(
+        { message: "Invalid or expired OTP" },
+        { status: 400 }
+      );
+    }
+
+    // Check expiry
+    if (user.otpExpiry && new Date() > user.otpExpiry) {
+      user.otp = null;
+      user.otpExpiry = null;
+      await user.save({ validateModifiedOnly: true });
+      return NextResponse.json(
+        { message: "OTP has expired" },
+        { status: 400 }
+      );
+    }
+
+    // Compare OTP
+    const isMatch = await bcrypt.compare(otp, user.otp);
+    if (!isMatch) {
+      return NextResponse.json(
+        { message: "Invalid or expired OTP" },
+        { status: 400 }
+      );
+    }
+
+    return NextResponse.json({ message: "OTP verified successfully" });
+  } catch (err: any) {
+    console.error("Verify OTP error:", err);
+    return NextResponse.json(
+      { message: "Server error", error: err.message },
+      { status: 500 }
+    );
+  }
+}
