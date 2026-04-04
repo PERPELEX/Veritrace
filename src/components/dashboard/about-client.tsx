@@ -1,14 +1,14 @@
 "use client";
 
 import {
-  ChartBarSquareIcon,
-  GlobeAltIcon,
-  MagnifyingGlassIcon,
-  ComputerDesktopIcon,
-  ChartPieIcon,
-  ClockIcon,
-  Cog6ToothIcon,
+  ShieldCheckIcon,
+  SparklesIcon,
+  CpuChipIcon,
+  UserGroupIcon,
+  WindowIcon,
   ArrowLeftIcon,
+  CommandLineIcon,
+  BoltIcon,
 } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { DashboardSidebar, DashboardMobileNav } from "@/components/dashboard/dashboard-sidebar";
@@ -20,70 +20,151 @@ type Props = {
 
 export function DashboardAboutClient({ fullName, role }: Props) {
   return (
-    <main className="min-h-dvh bg-[#232427] p-0 sm:p-2">
-      <section className="mx-auto flex min-h-dvh w-full max-w-none flex-col overflow-hidden rounded-none bg-[#f1f2f4] lg:flex-row lg:h-[calc(100dvh-16px)] sm:min-h-[calc(100dvh-16px)] sm:rounded-2xl">
+    <main className="min-h-dvh bg-[#0a1020] p-0 sm:p-2">
+      <section className="mx-auto flex min-h-dvh w-full max-w-none flex-col overflow-hidden rounded-none bg-[#f4f7f9] lg:flex-row lg:h-[calc(100dvh-16px)] sm:min-h-[calc(100dvh-16px)] sm:rounded-3xl shadow-2xl">
         <DashboardSidebar fullName={fullName} role={role} />
 
-        <section className="w-full p-3 sm:p-4 lg:p-6 overflow-y-auto">
-          <div className="mb-3 flex flex-wrap items-center gap-2 text-sm lg:hidden">
+        <section className="w-full p-4 lg:p-8 overflow-y-auto">
+          <div className="mb-4 flex flex-wrap items-center gap-2 text-sm lg:hidden">
             <DashboardMobileNav role={role} />
           </div>
 
-          <header className="rounded-xl border border-slate-200 bg-white px-3 py-3 sm:px-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">About VeriTrace</p>
-                <h2 className="font-[var(--font-space-grotesk)] text-2xl font-semibold text-slate-900 sm:text-3xl">Platform Intelligence</h2>
+          {/* Hero Section */}
+          <header className="relative overflow-hidden rounded-[2.5rem] bg-[#0a1020] text-white shadow-2xl">
+            {/* Background Pattern */}
+            <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:20px_20px]" />
+            <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-[#84cc16] blur-[100px] opacity-20" />
+            <div className="absolute -bottom-24 -left-24 h-64 w-64 rounded-full bg-[#16a34a] blur-[100px] opacity-20" />
+
+            <div className="relative z-10 p-8 lg:p-12">
+              <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+                <div className="fade-slide">
+                  <div className="inline-flex items-center gap-2 rounded-full bg-[#84cc16]/10 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.2em] text-[#84cc16] mb-3">
+                    Knowledge Base
+                  </div>
+                  <h2 className="font-[var(--font-space-grotesk)] text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl text-white">
+                    Platform Intelligence
+                  </h2>
+                  <p className="mt-4 max-w-2xl text-lg text-slate-400 font-light leading-relaxed">
+                    VeriTrace monitors social discourse in near real-time, transforming raw digital signals into actionable operational intelligence for modern analysis teams.
+                  </p>
+                </div>
+                
+                <Link 
+                  href="/dashboard" 
+                  className="group flex h-fit items-center gap-2 self-start rounded-2xl border border-white/10 bg-white/5 px-6 py-3.5 text-sm font-medium transition-all hover:bg-white/10 hover:border-white/20 active:scale-95"
+                >
+                  <ArrowLeftIcon className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+                  Back to Overview
+                </Link>
               </div>
-              <Link href="/dashboard" className="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 transition hover:bg-slate-50">
-                <ArrowLeftIcon className="h-4 w-4" />
-                Back to Overview
-              </Link>
             </div>
-            <p className="mt-2 text-sm text-slate-600">
-              VeriTrace monitors social discourse in near real-time and turns raw tweet streams into operational intelligence for analysis teams.
-            </p>
           </header>
 
-          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-12">
-            <article className="rounded-2xl border border-slate-200 bg-white p-5 xl:col-span-4">
-              <h3 className="text-xl font-semibold text-slate-900">Mission</h3>
-              <p className="mt-2 text-sm text-slate-600">
-                Detect and track misinformation amplification patterns before they impact decision-making.
-              </p>
-            </article>
+          {/* Key Missions & Capabilities */}
+          <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+            {[
+              {
+                title: "Our Mission",
+                desc: "Detecting and tracking misinformation amplification patterns before they impact critical global decision-making.",
+                icon: ShieldCheckIcon,
+                color: "text-blue-500",
+                bg: "bg-blue-50",
+                delay: "delay-1"
+              },
+              {
+                title: "Data Pipeline",
+                desc: "Ingesting massive trend datasets, clustering outputs, and socio-geographic signals for high-fidelity visualization.",
+                icon: CommandLineIcon,
+                color: "text-emerald-500",
+                bg: "bg-emerald-50",
+                delay: "delay-2"
+              },
+              {
+                title: "Strategic Security",
+                desc: "Enterprise-grade role-based access management ensuring sensitive data remains in the hands of authorized personnel.",
+                icon: SparklesIcon,
+                color: "text-amber-500",
+                bg: "bg-amber-50",
+                delay: "delay-3"
+              }
+            ].map((item, idx) => (
+              <article 
+                key={idx} 
+                className={`fade-slide ${item.delay} group relative overflow-hidden rounded-[2rem] border border-slate-200 bg-white p-8 transition-all hover:border-[#84cc16]/50 hover:shadow-2xl hover:shadow-[#84cc16]/5`}
+              >
+                <div className={`mb-6 p-4 w-fit rounded-2xl ${item.bg} ${item.color} group-hover:scale-110 transition-transform`}>
+                  <item.icon className="h-8 w-8" />
+                </div>
+                <h3 className="text-2xl font-bold text-slate-900 mb-3">{item.title}</h3>
+                <p className="text-slate-600 leading-relaxed text-sm">
+                  {item.desc}
+                </p>
+              </article>
+            ))}
+          </div>
 
-            <article className="rounded-2xl border border-slate-200 bg-white p-5 xl:col-span-4">
-              <h3 className="text-xl font-semibold text-slate-900">Data Pipeline</h3>
-              <p className="mt-2 text-sm text-slate-600">
-                SQL Server tables ingest trend tweets, clustering outputs, and user-location signals for dashboard and BI layers.
-              </p>
-            </article>
-
-            <article className="rounded-2xl border border-slate-200 bg-white p-5 xl:col-span-4">
-              <h3 className="text-xl font-semibold text-slate-900">Security</h3>
-              <p className="mt-2 text-sm text-slate-600">
-                Role-based admin access backed by hashed credentials in a dedicated AdminLogin table.
-              </p>
-            </article>
-
-            <article className="rounded-2xl border border-slate-200 bg-white p-5 xl:col-span-6">
-              <h3 className="text-xl font-semibold text-slate-900">Key Capabilities</h3>
-              <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-600">
-                <li>Trend spike detection with date-range filtering</li>
-                <li>Cluster volume distribution and topic focus tracking</li>
-                <li>User location heat analysis for regional impact</li>
-                <li>Embedded Power BI for leadership reporting</li>
+          <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-12">
+            {/* Capabilities */}
+            <article className="fade-slide delay-1 rounded-[2.5rem] border border-slate-200 bg-white p-8 lg:col-span-12 xl:col-span-7">
+              <div className="flex items-center gap-3 mb-8">
+                <div className="p-3 bg-purple-50 text-purple-600 rounded-2xl">
+                  <CpuChipIcon className="h-6 w-6" />
+                </div>
+                <h3 className="text-2xl font-bold text-slate-900 text-pretty">Key Capabilities</h3>
+              </div>
+              <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                {[
+                  { label: "Trend Spike Detection", sub: "Real-time date-range filtering" },
+                  { label: "Cluster Analysis", sub: "Topic focus and volume tracking" },
+                  { label: "Regional Insight", sub: "User location heat analysis" },
+                  { label: "Advanced Reporting", sub: "Embedded Power BI analytics" }
+                ].map((cap, i) => (
+                  <li key={i} className="flex gap-4 group">
+                    <div className="h-10 w-10 flex-shrink-0 flex items-center justify-center rounded-xl bg-slate-50 text-[#84cc16] group-hover:bg-[#84cc16] group-hover:text-white transition-colors">
+                      <BoltIcon className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-slate-900">{cap.label}</p>
+                      <p className="text-xs text-slate-500 mt-0.5">{cap.sub}</p>
+                    </div>
+                  </li>
+                ))}
               </ul>
             </article>
 
-            <article className="rounded-2xl border border-slate-200 bg-white p-5 xl:col-span-6">
-              <h3 className="text-xl font-semibold text-slate-900">Current Stack</h3>
-              <div className="mt-3 grid grid-cols-1 gap-2 text-sm text-slate-700 sm:grid-cols-2">
-                <p className="rounded-lg bg-slate-100 px-3 py-2">Next.js 16 + React 19</p>
-                <p className="rounded-lg bg-slate-100 px-3 py-2">SQL Server (SMIDVS)</p>
-                <p className="rounded-lg bg-slate-100 px-3 py-2">Recharts + Leaflet</p>
-                <p className="rounded-lg bg-slate-100 px-3 py-2">Power BI Embedded</p>
+            {/* Current Stack */}
+            <article className="fade-slide delay-2 rounded-[2.5rem] bg-[#0a1020] p-8 text-white lg:col-span-12 xl:col-span-5 border border-white/5">
+              <div className="flex items-center gap-3 mb-8">
+                <div className="p-3 bg-white/5 text-[#84cc16] rounded-2xl border border-white/10">
+                  <CommandLineIcon className="h-6 w-6" />
+                </div>
+                <h3 className="text-2xl font-bold">Tech Ecosystem</h3>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {[
+                  { name: "Frontend", tech: "Next.js 16 + React 19" },
+                  { name: "Database", tech: "SQL Server (M6)" },
+                  { name: "Visuals", tech: "Recharts + GSAP" },
+                  { name: "Enterprise", tech: "Power BI Integration" }
+                ].map((item, i) => (
+                  <div key={i} className="rounded-2xl bg-white/5 p-4 border border-white/5 hover:border-white/10 transition-colors">
+                    <p className="text-[10px] uppercase tracking-widest text-[#84cc16] mb-1 font-semibold">{item.name}</p>
+                    <p className="text-sm font-medium text-slate-300">{item.tech}</p>
+                  </div>
+                ))}
+              </div>
+              
+              <div className="mt-8 flex items-center justify-between p-4 rounded-2xl bg-gradient-to-r from-[#84cc16]/20 to-transparent border border-[#84cc16]/20">
+                <div className="flex items-center gap-3">
+                  <WindowIcon className="h-5 w-5 text-[#84cc16]" />
+                  <span className="text-xs font-medium text-slate-400">Environment Ready</span>
+                </div>
+                <div className="flex gap-1">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="h-1 w-1 rounded-full bg-[#84cc16]" />
+                  ))}
+                </div>
               </div>
             </article>
           </div>

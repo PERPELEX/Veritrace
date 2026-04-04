@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useDispatch, useSelector } from "react-redux";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { logoutUser } from "@/store/slices/authSlice";
 import { AppDispatch, RootState } from "@/store/store";
 import { SiteLogo } from "@/components/common/site-logo";
@@ -17,8 +17,11 @@ import {
   ClockIcon,
   Cog6ToothIcon,
   UsersIcon,
+  UserIcon,
+  UserCircleIcon,
   ArrowRightStartOnRectangleIcon,
 } from "@heroicons/react/24/outline";
+import axios from "axios";
 
 type Props = {
   fullName: string;
@@ -30,6 +33,21 @@ export function DashboardSidebar({ fullName, role }: Props) {
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
   const [loadingLogout, setLoadingLogout] = useState(false);
+  const [pfpUrl, setPfpUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const res = await axios.get("/api/profile", { withCredentials: true });
+        if (res.data && res.data.pfpUrl) {
+          setPfpUrl(res.data.pfpUrl);
+        }
+      } catch (err) {
+        console.error("Sidebar: Failed to fetch profile", err);
+      }
+    };
+    fetchProfile();
+  }, []);
 
   const onLogout = async () => {
     setLoadingLogout(true);
@@ -48,7 +66,7 @@ export function DashboardSidebar({ fullName, role }: Props) {
 
   const generalLinks = [
     { name: "About", href: "/dashboard/about", icon: ClockIcon },
-    { name: "Settings", href: "/dashboard/settings", icon: Cog6ToothIcon },
+    { name: "Profile", href: "/dashboard/profile", icon: UserIcon },
   ];
 
   const adminLinks = [
@@ -103,9 +121,18 @@ export function DashboardSidebar({ fullName, role }: Props) {
 
       <div className="mt-5 border-t border-emerald-100/20 pt-5">
         <p className="mb-2 text-xs uppercase tracking-[0.18em] text-emerald-100/70">Signed In</p>
-        <p className="text-sm text-white/90">{fullName}</p>
+        <div className="flex items-center gap-3">
+          {pfpUrl ? (
+            <img src={pfpUrl} alt="Avatar" className="h-10 w-10 rounded-full border-2 border-emerald-500/50 object-cover" />
+          ) : (
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-500/20 border-2 border-emerald-500/50">
+              <UserCircleIcon className="h-6 w-6 text-emerald-100/70" />
+            </div>
+          )}
+          <p className="text-sm font-medium text-white/90 truncate">{fullName}</p>
+        </div>
         <button
-          className="mt-3 inline-flex w-full text-center flex justify-center items-center gap-2 rounded-lg bg-red-500/20 px-3 py-2 text-sm text-red-100 transition hover:bg-red-500/30"
+          className="mt-4 inline-flex w-full text-center flex justify-center items-center gap-2 rounded-lg bg-red-500/20 px-3 py-2 text-sm text-red-100 transition hover:bg-red-500/30"
           onClick={onLogout}
           disabled={loadingLogout}
         >
@@ -128,7 +155,7 @@ export function DashboardMobileNav({ role }: { role?: string }) {
     { name: "Search", href: "/dashboard/search" },
     { name: "Sentiment", href: "/dashboard/sentiment" },
     { name: "About", href: "/dashboard/about" },
-    { name: "Settings", href: "/dashboard/settings" },
+    { name: "Profile", href: "/dashboard/profile" },
   ];
 
   if (role === "admin") {
