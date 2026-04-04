@@ -10,87 +10,22 @@ import {
   Cog6ToothIcon,
 } from "@heroicons/react/24/outline";
 import Link from "next/link";
-import { SiteLogo } from "@/components/common/site-logo";
-
+import { DashboardSidebar, DashboardMobileNav } from "@/components/dashboard/dashboard-sidebar";
 type Props = {
   fullName: string;
+  role: string;
 };
 
-export function DashboardPowerBiClient({ fullName }: Props) {
+export function DashboardPowerBiClient({ fullName, role }: Props) {
   return (
     <main className="min-h-dvh bg-[#232427] p-0 sm:p-2">
       <section className="mx-auto flex min-h-dvh w-full max-w-none flex-col overflow-hidden rounded-none bg-[#f1f2f4] lg:flex-row lg:h-[calc(100dvh-16px)] sm:min-h-[calc(100dvh-16px)] sm:rounded-2xl">
-        <aside className="hidden w-[260px] shrink-0 overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden bg-gradient-to-b from-[#00130f] via-[#003526] to-[#00120f] px-6 py-8 text-white lg:flex lg:flex-col">
-          <SiteLogo className="h-20 w-auto" width={300} height={100} />
-          <p className="mt-10 text-sm uppercase tracking-[0.22em] text-emerald-100/70">Menu</p>
-
-          <nav className="mt-4 space-y-2 text-[18px]">
-            <Link href="/dashboard" className="flex items-center gap-3 rounded-lg px-3 py-2 text-emerald-50/90 transition hover:bg-white/8">
-              <ChartBarSquareIcon className="h-5 w-5" />
-              Overview
-            </Link>
-            <Link href="/dashboard/trend" className="flex items-center gap-3 rounded-lg px-3 py-2 text-emerald-50/90 transition hover:bg-white/8">
-              <GlobeAltIcon className="h-5 w-5" />
-              Trends
-            </Link>
-            <Link href="/dashboard/powerbi" className="flex items-center gap-3 rounded-lg bg-white/10 px-3 py-2 text-white">
-              <ComputerDesktopIcon className="h-5 w-5" />
-              Power BI
-            </Link>
-            <Link href="/dashboard/search" className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-emerald-50/90 transition hover:bg-white/8">
-              <MagnifyingGlassIcon className="h-5 w-5" />
-              Search
-            </Link>
-            <Link href="/dashboard/sentiment" className="flex items-center gap-3 rounded-lg px-3 py-2 text-emerald-50/90 transition hover:bg-white/8">
-              <ChartPieIcon className="h-5 w-5" />
-              Sentiment
-            </Link>
-          </nav>
-
-          <div className="my-8 border-t border-emerald-100/20" />
-
-          <p className="text-sm uppercase tracking-[0.22em] text-emerald-100/70">General</p>
-          <nav className="mt-4 space-y-2 text-[18px]">
-            <Link href="/dashboard/about" className="flex items-center gap-3 rounded-lg px-3 py-2 text-emerald-50/90 transition hover:bg-white/8">
-              <ClockIcon className="h-5 w-5" />
-              About
-            </Link>
-            <Link href="/dashboard/settings" className="flex items-center gap-3 rounded-lg px-3 py-2 text-emerald-50/90 transition hover:bg-white/8">
-              <Cog6ToothIcon className="h-5 w-5" />
-              Settings
-            </Link>
-          </nav>
-
-          <div className="mt-auto border-t border-emerald-100/20 pt-5">
-            <p className="mb-2 text-xs uppercase tracking-[0.18em] text-emerald-100/70">Signed In</p>
-            <p className="text-sm text-white/90">{fullName}</p>
-          </div>
-        </aside>
+        <DashboardSidebar fullName={fullName} role={role} />
 
         <section className="w-full p-3 sm:p-4 lg:p-6 overflow-y-auto">
-          <nav className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white p-2 text-sm lg:hidden">
-            <Link href="/dashboard" className="rounded-lg border border-slate-200 px-3 py-2 text-slate-700 transition hover:bg-slate-50">
-              Overview
-            </Link>
-            <Link href="/dashboard/trend" className="rounded-lg border border-slate-200 px-3 py-2 text-slate-700 transition hover:bg-slate-50">
-              Trends
-            </Link>
-            <Link href="/dashboard/powerbi" className="rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-slate-800">
-              Power BI
-            </Link>
-            <Link href="/dashboard/search" className="rounded-lg border border-slate-200 px-3 py-2 text-slate-700 transition hover:bg-slate-50">
-              Search
-            </Link>
-            <Link href="/dashboard/sentiment" className="rounded-lg border border-slate-200 px-3 py-2 text-slate-700 transition hover:bg-slate-50">
-              Sentiment
-            </Link>
-            <Link href="/dashboard/about" className="rounded-lg border border-slate-200 px-3 py-2 text-slate-700 transition hover:bg-slate-50">
-              About
-            </Link>
-            <Link href="/dashboard/settings" className="rounded-lg border border-slate-200 px-3 py-2 text-slate-700 transition hover:bg-slate-50">
-              Settings
-            </Link>
-          </nav>
+          <div className="mb-3 flex flex-wrap items-center gap-2 text-sm lg:hidden">
+            <DashboardMobileNav role={role} />
+          </div>
 
           <header className="rounded-xl border border-slate-200 bg-white px-3 py-3 sm:px-4">
             <h2 className="font-[var(--font-space-grotesk)] text-2xl font-semibold text-slate-900 sm:text-3xl">Power BI Dashboard</h2>

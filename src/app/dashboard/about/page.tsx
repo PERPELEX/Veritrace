@@ -9,5 +9,5 @@ export default async function AboutPage() {
     redirect("/");
   }
 
-  return <DashboardAboutClient fullName={session.fullName} />;
+  return <DashboardAboutClient fullName={session.fullName} role={session.role} />;
 }

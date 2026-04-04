@@ -9,5 +9,5 @@ export default async function PowerBiPage() {
     redirect("/");
   }
 
-  return <DashboardPowerBiClient fullName={session.fullName} />;
+  return <DashboardPowerBiClient fullName={session.fullName} role={session.role} />;
 }

@@ -27,7 +27,10 @@ axiosInstance.interceptors.response.use(
     const message = error.response?.data?.message || error.message;
 
     if (status === 401) {
-      console.error("🔒 [AXIOS] Unauthorized 401:", message);
+      // Don't spam the console when an unauthenticated user natively checks their token
+      if (!error.config?.url?.includes("/auth/check-token")) {
+        console.error("🔒 [AXIOS] Unauthorized 401:", message);
+      }
     } else if (status === 403) {
       console.error("🚫 [AXIOS] Forbidden 403:", message);
     } else if (status === 404) {

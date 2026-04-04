@@ -29,5 +29,5 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     keyword: resolvedSearchParams.keyword,
   });
 
-  return <DashboardSearchClient fullName={session.fullName} searchData={searchData} />;
+  return <DashboardSearchClient fullName={session.fullName} role={session.role} searchData={searchData} />;
 }

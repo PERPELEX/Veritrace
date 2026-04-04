@@ -9,5 +9,5 @@ export default async function SettingsPage() {
     redirect("/");
   }
 
-  return <DashboardSettingsClient fullName={session.fullName} />;
+  return <DashboardSettingsClient fullName={session.fullName} role={session.role} />;
 }

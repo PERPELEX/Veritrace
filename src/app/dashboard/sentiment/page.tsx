@@ -25,5 +25,5 @@ export default async function SentimentPage({ searchParams }: SentimentPageProps
     trendName: resolvedSearchParams.trendName,
   });
 
-  return <DashboardSentimentClient fullName={session.fullName} sentimentData={sentimentData} />;
+  return <DashboardSentimentClient fullName={session.fullName} role={session.role} sentimentData={sentimentData} />;
 }

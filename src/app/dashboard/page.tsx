@@ -27,6 +27,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   return (
     <DashboardOverviewClient
+      role={session.role}
       fullName={session.fullName}
       overviewData={overviewData}
       selectedStartDate={selectedStartDate}

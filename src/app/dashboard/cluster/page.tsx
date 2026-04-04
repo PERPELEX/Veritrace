@@ -25,5 +25,5 @@ export default async function ClusterPage({ searchParams }: ClusterPageProps) {
     trendName: resolvedSearchParams.trendName,
   });
 
-  return <DashboardClusterClient fullName={session.fullName} clusterData={clusterData} />;
+  return <DashboardClusterClient fullName={session.fullName} role={session.role} clusterData={clusterData} />;
 }

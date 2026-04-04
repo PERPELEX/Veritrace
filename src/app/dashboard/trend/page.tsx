@@ -25,5 +25,5 @@ export default async function TrendPage({ searchParams }: TrendPageProps) {
     trendName: resolvedSearchParams.trendName,
   });
 
-  return <DashboardTrendClient fullName={session.fullName} trendData={trendData} />;
+  return <DashboardTrendClient fullName={session.fullName} role={session.role} trendData={trendData} />;
 }
