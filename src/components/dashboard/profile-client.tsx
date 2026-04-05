@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import axios from "axios";
+import axiosInstance from "@/api/axiosInstance";
+import axios from "axios"; // Keeping for type definitions if needed, but using axiosInstance for calls
 import {
   UserIcon,
   PhotoIcon,
@@ -46,7 +47,7 @@ export function ProfileClient({ fullName, role, email }: Props) {
   const fetchProfile = async () => {
     try {
       setLoading(true);
-      const res = await axios.get("/api/profile", { withCredentials: true });
+      const res = await axiosInstance.get("/profile");
       if (res.data) {
         setFormData({
           bio: res.data.bio || "",
@@ -77,11 +78,10 @@ export function ProfileClient({ fullName, role, email }: Props) {
     formData.append("image", file);
 
     try {
-      const res = await axios.post("/api/upload", formData, {
+      const res = await axiosInstance.post("/upload", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
-        withCredentials: true,
       });
       return res.data.link;
     } catch (err: any) {
@@ -103,10 +103,9 @@ export function ProfileClient({ fullName, role, email }: Props) {
         finalPfpUrl = await uploadFile(selectedFile);
       }
 
-      await axios.post(
-        "/api/profile",
-        { ...formData, pfpUrl: finalPfpUrl },
-        { withCredentials: true }
+      await axiosInstance.post(
+        "/profile",
+        { ...formData, pfpUrl: finalPfpUrl }
       );
 
       setSuccess("Profile updated successfully!");

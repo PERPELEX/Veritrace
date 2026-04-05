@@ -2,7 +2,7 @@ import axios from "axios";
 import { AxiosErrorType } from "@/types/error/apiError";
 
 // Same-origin — Next.js API routes are at /api
-const API_URL = "/api";
+const API_URL = typeof window !== "undefined" ? window.location.origin + "/api" : "/api";
 
 const axiosInstance = axios.create({
   baseURL: API_URL,
@@ -40,7 +40,10 @@ axiosInstance.interceptors.response.use(
     } else if (!error.response) {
       console.error(
         "🌐 [AXIOS] Network Error - Backend unreachable at:",
-        API_URL
+        API_URL,
+        "| Details:",
+        error.message,
+        error.code ? `| Code: ${error.code}` : ""
       );
     }
 

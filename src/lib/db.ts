@@ -24,6 +24,10 @@ function getDbConfig(): sql.config {
     options: {
       encrypt: process.env.DB_ENCRYPT !== "false",
       trustServerCertificate: process.env.DB_TRUST_SERVER_CERTIFICATE === "true",
+      // Set serverName to undefined if DB_SERVER is an IP address to avoid [DEP0123]
+      serverName: /^[0-9.]+$/.test(process.env.DB_SERVER ?? "")
+        ? undefined
+        : process.env.DB_SERVER,
     },
     pool: {
       max: 10,
